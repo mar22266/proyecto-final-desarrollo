@@ -22,5 +22,9 @@ COPY packages/shared packages/shared
 COPY apps/web apps/web
 RUN pnpm --filter @secure-crm/shared build && pnpm --filter @secure-crm/web build
 
+# Next puede escribir caché en .next durante la ejecución.
+RUN chown -R node:node /app/apps/web/.next
+
 EXPOSE 3000
+USER node
 CMD ["pnpm", "--filter", "@secure-crm/web", "start"]

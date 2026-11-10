@@ -55,6 +55,7 @@ jobs:
         with:
           name: semgrep
           path: semgrep.sarif
+          if-no-files-found: error
 
   # ── SCA ────────────────────────────────────────────────────────────
   sca:
@@ -71,7 +72,11 @@ jobs:
       - name: Instalar dependencias
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Auditoría (reporte)
-        run: pnpm audit --prod --json > pnpm-audit.json || true
+        run: |
+          # pnpm devuelve 1 cuando encuentra vulnerabilidades. El JSON debe
+          # existir y tener métricas; un fallo de red no es un reporte válido.
+          pnpm audit --prod --json > pnpm-audit.json || true
+          jq -e '.metadata.vulnerabilities | has("high") and has("critical")' pnpm-audit.json > /dev/null
       - name: Auditoría (gate)
         continue-on-error: ${{ env.SECURITY_GATE != 'bloqueo' }}
         run: |
@@ -85,6 +90,7 @@ jobs:
         with:
           name: sca
           path: "*-audit.json"
+          if-no-files-found: error
 
   # ── SBOM ───────────────────────────────────────────────────────────
   sbom:
@@ -128,10 +134,21 @@ jobs:
       - name: ZAP baseline
         run: |
           mkdir -p zap && chmod 777 zap
+          set +e
           docker run --rm --network host -v "$PWD/zap:/zap/wrk:rw" \
             ghcr.io/zaproxy/zaproxy:stable \
-            zap-baseline.py -t "$APP_URL" -r reporte-zap.html -J reporte-zap.json -I \
-            || echo "ZAP terminó con hallazgos"
+            zap-baseline.py -t "$APP_URL" -r reporte-zap.html -J reporte-zap.json -I
+          zap_status=$?
+          set -e
+          # ZAP: 0 = limpio, 1 = FAIL, 2 = WARN, 3 = error de ejecución.
+          # Los hallazgos los evalúa el gate; los errores de ejecución sí fallan.
+          if [ "$zap_status" -gt 2 ]; then
+            echo "ZAP falló al ejecutar el baseline (código $zap_status)"
+            exit "$zap_status"
+          fi
+          test -s zap/reporte-zap.html
+          test -s zap/reporte-zap.json
+          jq -e '.site | type == "array"' zap/reporte-zap.json > /dev/null
       - name: ZAP (gate)
         continue-on-error: ${{ env.SECURITY_GATE != 'bloqueo' }}
         run: |
@@ -144,3 +161,4 @@ jobs:
         with:
           name: zap
           path: zap/
+          if-no-files-found: error

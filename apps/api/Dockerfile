@@ -17,6 +17,10 @@ COPY packages/shared packages/shared
 COPY apps/api apps/api
 RUN pnpm --filter @secure-crm/shared build && pnpm --filter @secure-crm/api build
 
+# La semilla y SQLite escriben en data/ al arrancar el contenedor.
+RUN mkdir -p /app/apps/api/data && chown -R node:node /app/apps/api/data
+
 EXPOSE 4000
+USER node
 # Al arrancar: si no existe la BD, la crea y puebla; luego inicia el servidor.
 CMD ["sh", "-c", "node apps/api/dist/seed.js && node apps/api/dist/index.js"]

@@ -66,12 +66,40 @@ Este gate no sustituye las pruebas de autorización por objeto, firma JWT o regr
 
 Los controles automáticos dan una señal parcial sobre los [requisitos de seguridad](../hito-1/README.md#5-requisitos-de-seguridad-verificables): Semgrep revisa patrones de código y configuración; SCA revisa dependencias; ZAP revisa pasivamente la superficie pública; el SBOM inventaría componentes. Los requisitos RS-01 a RS-05 necesitan también los PoC y pruebas de regresión. RS-06 a RS-08 requieren evidencia del WAF/SIEM en H3. La matriz final debe distinguir qué control observó realmente cada hallazgo.
 
-## Evidencia pendiente para cerrar H2 completo
+## Evidencia del Equipo rojo · Hito 2
 
-- Conservar la corrida de Actions de esta rama y el artefacto SBOM enlazados arriba; agregar las capturas de la corrida y del artefacto que pide la guía visual antes de la entrega en Canvas.
-- Equipo rojo: revisar el nuevo reporte de ZAP por `localhost:8080` que ya está en esta carpeta; incorporar las parejas petición/respuesta de **al menos tres PoC** de Burp, la clasificación y el CVSS justificado métrica por métrica.
-- Equipo rojo: repetir los PoC confirmados en Postman y anotar hora, ruta y resultado para que el Equipo azul pueda encontrarlos en Kibana durante H3.
-- Grupo: revisar conjuntamente el umbral anterior y registrar cualquier excepción con hallazgo, justificación, responsable y fecha de revisión.
+### PoC Burp Suite
+
+Los tres PoC confirmados están documentados en [`poc-burp.md`](poc-burp.md) con clasificación OWASP Top 10:2025, CWE y métricas CVSS v3.1 justificadas individualmente.
+
+| PoC | Hallazgo | OWASP | CWE | CVSS | Capturas |
+|---|---|---|---|---|---|
+| PoC-01 | JWT sin verificación de firma | A07 | CWE-347 | 9.8 Crítica | `shots/burp/repeater-jwt-forged.png` |
+| PoC-02 | SQL Injection en login | A05 | CWE-89 | 8.1 Alta | `shots/burp/repeater-sqli.png` |
+| PoC-03 | IDOR en tickets | A01 | CWE-639 | 8.1 Alta | `shots/burp/repeater-idor.png` |
+
+### Ejecución en Postman con marca de tiempo
+
+Los PoC se reprodujeron el **2026-11-10 en entorno local** (UTC-6 / CST). La colección completa está en [`poc-postman.json`](poc-postman.json).
+
+| Request | Ruta | Hora UTC | Resultado |
+|---|---|---|---|
+| PoC-01a · Login viewer | `POST /api/auth/login` | 2026-11-10T17:47:24Z | 200 — token viewer obtenido |
+| PoC-01b · JWT forjado `role:admin` | `GET /api/users` | 2026-11-10T17:47:26Z | 200 — lista de usuarios con `passwordHash` |
+| PoC-02 · SQLi `admin'--` | `POST /api/auth/login` | 2026-11-10T17:47:28Z | 200 — token de admin sin contraseña |
+| PoC-03b · IDOR ticket #1 | `GET /api/tickets/1` | 2026-11-10T17:47:30Z | 200 — datos del ticket ajeno expuestos |
+| PoC-03c · IDOR ticket #2 | `GET /api/tickets/2` | 2026-11-10T17:47:30Z | 200 — enumeración confirmada |
+
+> **Para el Equipo azul (H3):** buscar en Kibana en el índice `filebeat-*` el rango `2026-11-10T17:47:00Z` → `2026-11-10T17:48:00Z` filtrando por las rutas `/api/users`, `/api/auth/login` y `/api/tickets/`.
+
+### ZAP activo contra el WAF
+
+El escaneo ZAP activo contra `http://localhost:8080` está documentado en [`zap-escaneo-2026-11-10.md`](zap-escaneo-2026-11-10.md). Los reportes son [`zap-reporte.html`](zap-reporte.html) y [`zap-reporte.json`](zap-reporte.json). ZAP detectó SQLi (confianza baja) en `username` del login y en el parámetro `q` de tickets, coincidiendo con PoC-02. IDOR y JWT forjado no son detectables por escaneo automático — se confirman únicamente con los PoC de Burp.
+
+## Pendiente para cierre definitivo de H2
+
+- [ ] Grupo: revisar conjuntamente el umbral del security gate y registrar excepciones con hallazgo, justificación, responsable y fecha.
+- [ ] Capturas de la corrida de Actions y del artefacto SBOM para la entrega en Canvas.
 
 No se atribuyen al Equipo rojo los reportes del baseline automático ni se presentan como evidencia de sus PoC manuales.
 

@@ -24,9 +24,9 @@ pedir() {
   sleep 1
 }
 
-# Secure CRM. Si usan otra app, editen estas líneas.
+# Comprobación pública mínima. Las rutas de tickets requieren un JWT; para
+# probarlas hay que iniciar sesión y enviar Authorization: Bearer <token>.
 pedir GET "$WAF_URL/api/health"
 pedir POST "$WAF_URL/api/auth/login" '{"username":"jperez","password":"Password1"}'
-pedir GET "$WAF_URL/api/tickets?q=soporte"
 
 echo "=== Listo. En Kibana busquen fields.fuente : \"waf-access\" (Last 15 minutes) ==="

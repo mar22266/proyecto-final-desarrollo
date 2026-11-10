@@ -2,7 +2,7 @@
 
 ## Configuración del grupo
 
-Esta copia ya integra Secure CRM en `docker-compose.yml` (opción B): la API `api:4000` solo está en la red interna de Docker, el WAF publica `127.0.0.1:8080` y la web en `127.0.0.1:3000` llama a la API por el WAF. El modo inicial es `DetectionOnly`. La configuración local se copia de `.env.example` a `.env`, que Git ignora.
+Esta copia ya integra Secure CRM en `docker-compose.yml` (opción B): la API `api:4000` solo está en la red interna de Docker, el WAF publica `127.0.0.1:8080` y la web en `127.0.0.1:3000` llama a la API por el WAF. La configuración de Hito 3 en `.env.example` deja el WAF en `On`. La configuración local se copia a `.env`, que Git ignora.
 
 En Windows, desde esta carpeta:
 
@@ -13,6 +13,8 @@ docker compose ps
 ```
 
 El registro de roles y la evidencia del arranque están en [`docs/hito-0`](../docs/hito-0/README.md). El diseño está en [`docs/hito-1`](../docs/hito-1/README.md). Los pasos genéricos que siguen describen también la opción A para otras aplicaciones; este grupo usa la opción B.
+
+La [evidencia y los límites de Hito 3](../docs/hito-3/README.md) describen las tres detecciones guardadas, el dashboard, las pruebas con bloqueo y la repetición pendiente del Equipo rojo. Para reproducir Hito 2 antes de esa repetición, cambien temporalmente `MODSEC_RULE_ENGINE=DetectionOnly` en el `.env` local y recreen `waf`; luego restablezcan `On`.
 
 Su aplicación queda detrás de un WAF (ModSecurity + OWASP Core Rule Set). Filebeat envía los logs del WAF a Elasticsearch y ustedes los analizan en Kibana, que funciona como SIEM del Blue Team.
 
@@ -35,7 +37,9 @@ El entorno trae la infraestructura. **Ustedes construyen la defensa**: conectan 
 | `.env.example` | Variables a ajustar: a dónde reenvía el WAF, puerto, modo del WAF. Cópienlo a `.env`. |
 | `filebeat.yml` | Qué logs se envían al SIEM. |
 | `waf/REQUEST-900-…conf`, `waf/RESPONSE-999-…conf` | Sus exclusiones para falsos positivos (paso 5). |
-| `app-logs/` | Opcional: logs de su aplicación (paso 6). |
+| `kibana-export.ndjson` | Búsquedas DET-01 a DET-03, cuatro visualizaciones y dashboard exportados. |
+| Volumen `security-logs` | Eventos JSON de firma JWT inválida y acceso a ticket ajeno, enviados por Filebeat. |
+| `app-logs/` | Entrada adicional opcional para otros logs de la aplicación. |
 
 Esta carpeta ya está versionada como `/waf-siem` en el repositorio del grupo. Las reglas y exclusiones posteriores se guardarán aquí.
 
@@ -176,14 +180,14 @@ Exporten las búsquedas guardadas y el dashboard (Stack Management → Saved Obj
 2. Usen la app **como usuario normal**: registro, login, formularios, búsqueda, carga de archivos. Todo lo legítimo que reciba un 403 es un **falso positivo**.
 3. Para cada falso positivo: encuéntrenlo en Kibana, identifiquen el `ruleId` y el parámetro (`details.data`, la frase `found within`), y escriban la exclusión **más pequeña posible** en `waf/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf` (el archivo trae ejemplos comentados de cada tipo). El `949110` es el umbral: no se excluye. Si el ejemplo no es su caso, no lo copien: busquen ese `ruleId` en las reglas del contenedor y en la [guía de ajuste del CRS](https://coreruleset.org/docs/2-how-crs-works/2-3-false-positives-and-tuning/).
 4. `docker compose restart waf` y repitan el flujo legítimo.
-5. El Red Team repite sus PoC: deben recibir 403.
+5. El Red Team repite sus PoC. Un `403` demuestra bloqueo del PoC de SQLi. Las fallas de JWT e IDOR son de lógica de aplicación: el WAF no verifica firmas ni propiedad de tickets; sus eventos se detectan en el SIEM, pero continúan con respuesta `200` hasta la remediación del Hito 4. Véase la [evidencia de Hito 3](../docs/hito-3/README.md).
 6. Documenten en el informe cada exclusión: ruta, regla, por qué es falso positivo y qué riesgo aceptan.
 
 No desactiven el CRS completo ni bajen el nivel de detección para "que todo pase": eso se califica como ajuste incorrecto. Subir `BLOCKING_PARANOIA` a 2 es opcional y suma falsos positivos que también deben ajustar.
 
-## Paso 6 (opcional) — Logs de su aplicación en el SIEM
+## Paso 6 — Logs de la aplicación en el SIEM
 
-El WAF ve el tráfico, pero no sabe si un login falló. Para detectar fuerza bruta o abuso de lógica de negocio:
+El WAF ve el tráfico, pero no conoce el resultado de una verificación de firma ni a quién pertenece un ticket. Esta integración ya escribe eventos JSON en el volumen `security-logs` y Filebeat los indexa con `fields.fuente : "app-security"`. No registra tokens ni contraseñas. Para incorporar otros eventos:
 
 1. Hagan que su app escriba una línea JSON por evento de seguridad en un archivo, por ejemplo `{"evento":"login_fallido","usuario":"ana@x.com","ip":"…","ts":"…"}`.
 2. Pongan la carpeta de ese archivo en `APP_LOGS_DIR` (`.env`) y cambien `enabled: true` en el input `app` de `filebeat.yml`.

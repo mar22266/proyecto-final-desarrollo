@@ -22,6 +22,19 @@ filebeat.inputs:
     fields:
       fuente: waf-audit
 
+  # Eventos de lógica de aplicación: JWT con firma inválida y acceso a ticket ajeno.
+  - type: filestream
+    id: app-security
+    prospector.scanner.fingerprint.length: 64
+    paths:
+      - /var/log/security/events.jsonl
+    parsers:
+      - ndjson:
+          target: "security"
+          add_error_key: true
+    fields:
+      fuente: app-security
+
   # Opcional (README, sección 7): logs de su aplicación, por ejemplo logins fallidos.
   # Si su app escribe una línea JSON por evento, dejen el parser ndjson; si escribe
   # texto plano, borren el bloque "parsers".

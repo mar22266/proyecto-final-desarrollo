@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { authenticate, AuthedRequest } from '../middleware/auth';
+import { recordSecurityEvent } from '../security-log';
 
 export const ticketsRouter = Router();
 ticketsRouter.use(authenticate);
@@ -48,9 +49,12 @@ ticketsRouter.get('/', (req, res) => {
 // GET /api/tickets/:id
 // Sin verificación de propiedad ni rol (A01 Broken Access Control / IDOR / CWE-639).
 // Cualquier usuario autenticado (incluso 'viewer') lee cualquier ticket por id.
-ticketsRouter.get('/:id', (req, res) => {
-  const row = db.prepare(`${SELECT} WHERE t.id = ?`).get(req.params.id);
+ticketsRouter.get('/:id', (req: AuthedRequest, res) => {
+  const row = db.prepare(`${SELECT} WHERE t.id = ?`).get(req.params.id) as any;
   if (!row) return res.status(404).json({ error: 'Ticket no encontrado' });
+  if (req.user && req.user.role !== 'admin' && req.user.sub !== row.assignee_id && req.user.sub !== row.created_by_id) {
+    recordSecurityEvent(req, 'ticket_foreign_access', { ticketId: row.id, claimedRole: req.user.role });
+  }
   res.json(mapTicket(row));
 });
 

@@ -33,6 +33,12 @@ services:
     volumes:
       - waf-logs:/logs
 
+  security-logs-init:
+    image: busybox:1.36
+    command: ["sh", "-c", "chown -R 1000:1000 /logs"]
+    volumes:
+      - security-logs:/logs
+
   waf:
     image: owasp/modsecurity-crs:nginx
     restart: unless-stopped
@@ -71,11 +77,17 @@ services:
       context: ..
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
+    depends_on:
+      security-logs-init:
+        condition: service_completed_successfully
     environment:
       API_PORT: "4000"
       JWT_SECRET: "secret123"
+      SECURITY_LOG_PATH: "/var/log/security/events.jsonl"
     expose:
       - "4000"
+    volumes:
+      - security-logs:/var/log/security
 
   # La web se abre localmente; sus llamadas a la API pasan por el WAF :8080.
   web:
@@ -138,11 +150,13 @@ services:
     volumes:
       - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - waf-logs:/var/log/waf:ro
+      - security-logs:/var/log/security:ro
       # Opcional: logs de su aplicación (ver filebeat.yml y README, sección 7)
       - ${APP_LOGS_DIR:-./app-logs}:/var/log/app:ro
       - filebeat-data:/usr/share/filebeat/data
 
 volumes:
   waf-logs:
+  security-logs:
   es-data:
   filebeat-data:

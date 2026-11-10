@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { recordSecurityEvent } from '../security-log';
 
 export interface AuthedRequest extends Request {
   user?: { sub: number; username: string; role: string };
@@ -15,6 +16,15 @@ export function authenticate(req: AuthedRequest, res: Response, next: NextFuncti
 
   if (!token) {
     return res.status(401).json({ error: 'No autenticado' });
+  }
+
+  // Observa la validez de la firma sin cambiar la respuesta de este laboratorio.
+  try {
+    jwt.verify(token, process.env.JWT_SECRET || 'secret123');
+  } catch (error) {
+    if (error instanceof Error && error.message === 'invalid signature') {
+      recordSecurityEvent(req, 'jwt_invalid_signature');
+    }
   }
 
   // jwt.decode NO verifica la firma. La firma se ignora por completo.

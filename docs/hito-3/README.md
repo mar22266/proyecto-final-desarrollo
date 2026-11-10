@@ -1,12 +1,14 @@
 # Hito 3 · Detección y respuesta del Equipo azul
 
+La [lista de cierre del Equipo azul](cierre-equipo-azul.md) compara cada requisito de la guía con la evidencia disponible y la parte pendiente de la demo conjunta.
+
 ## Estado comprobado
 
 El laboratorio local usa `waf-siem/docker-compose.yml`: la API escucha solo en la red de Docker, el WAF publica `127.0.0.1:8080` y Filebeat envía eventos a Elasticsearch y Kibana. El archivo versionado `waf-siem/.env.example` configura `MODSEC_RULE_ENGINE=On`; la copia local `.env` también quedó en `On` durante la verificación del **10 de noviembre de 2026**. El dashboard y las búsquedas están exportados en [`waf-siem/kibana-export.ndjson`](../../waf-siem/kibana-export.ndjson).
 
 | Entregable del Equipo azul | Estado y evidencia |
 |---|---|
-| Tres detecciones ligadas a PoC de H2 | `DET-01` SQLi, `DET-02` JWT con firma inválida y `DET-03` lectura de ticket ajeno. Cada búsqueda encontró el evento de una prueba local. |
+| Detecciones ligadas a PoC de H2 | `DET-01` SQLi, `DET-02` JWT con firma inválida y `DET-03` lectura de ticket ajeno. Cada búsqueda encontró el evento de una prueba local. Se agregaron `DET-04` XSS y `DET-05` métodos no permitidos como cobertura adicional del WAF. |
 | Dashboard | Cuatro visualizaciones: eventos en el tiempo, reglas CRS, rutas atacadas e IP de origen; incluye las tres búsquedas DET. |
 | WAF en bloqueo | `SecRuleEngine On` comprobado dentro del contenedor; SQLi y XSS de prueba devolvieron `403`. |
 | Tráfico legítimo | Salud, login, listado, búsqueda, dashboard, usuarios, detalle y ciclo crear/editar/borrar ticket respondieron `200` o `201` según corresponde. El ticket de prueba se borró. |
@@ -24,6 +26,8 @@ La instalación local de Kibana tiene la seguridad de Elastic deshabilitada. Las
 | `DET-01 SQLi en login` | `fields.fuente : "waf-audit" and modsec.transaction.messages.details.ruleId : "942100"` | Regla CRS `942100` sobre `POST /api/auth/login`; también se activó el umbral `949110`. |
 | `DET-02 JWT con firma inválida` | `fields.fuente : "app-security" and security.event : "jwt_invalid_signature"` | `GET /api/users` con un JWT cuyo payload fue alterado conservando la firma anterior. |
 | `DET-03 Acceso a ticket ajeno` | `fields.fuente : "app-security" and security.event : "ticket_foreign_access"` | El usuario `viewer` consultó `GET /api/tickets/1`, que no le pertenece. |
+| `DET-04 XSS por CRS` | `fields.fuente : "waf-audit" and modsec.transaction.messages.details.ruleId : 941*` | Regla `941100` observada en la prueba local de XSS en la búsqueda de tickets. |
+| `DET-05 Método no permitido` | `fields.fuente : "waf-audit" and modsec.transaction.messages.details.ruleId : "911100"` | `PATCH /api/health` recibió `403` y generó un evento `911100` el 2026-11-10 cerca de `18:43:35Z`. |
 
 `DET-01` usa el log de auditoría de ModSecurity. Las otras dos señales se generan en la API y pasan por el volumen `security-logs` y la entrada `app-security` de Filebeat. El registro JSON contiene hora, tipo, método y ruta; para el ticket incluye ID y rol. No contiene el JWT, contraseñas ni el cuerpo de la respuesta. La observación de firma se limita al error `invalid signature`; no cambia la autenticación todavía vulnerable de H2. La observación de ticket registra lecturas de usuarios no administradores ajenas a su asignación y autoría; tampoco cambia la respuesta. Las correcciones pertenecen a H4.
 
@@ -37,7 +41,7 @@ El dashboard **`H3 · Detección Blue Team`** contiene:
 4. El top de rutas del log de auditoría.
 5. El top de IP de origen vistas por ModSecurity.
 
-El archivo NDJSON incluye **9 objetos**: un data view `filebeat-*`, tres búsquedas, cuatro visualizaciones Lens y un dashboard con sus referencias. Se generó mediante la exportación de objetos guardados de Kibana y se verificó que cada línea es JSON válido. Para restaurarlo en otra instalación: Stack Management → Saved Objects → Import → seleccionar `waf-siem/kibana-export.ndjson`, aceptando reemplazo solo si se pretende actualizar estos mismos objetos. Después, abrir el dashboard y elegir un rango que incluya la nueva prueba.
+El archivo NDJSON incluye **11 objetos**: un data view `filebeat-*`, cinco búsquedas, cuatro visualizaciones Lens y un dashboard con sus referencias. Se generó mediante la exportación de objetos guardados de Kibana y se verificó que cada línea es JSON válido. Para restaurarlo en otra instalación: Stack Management → Saved Objects → Import → seleccionar `waf-siem/kibana-export.ndjson`, aceptando reemplazo solo si se pretende actualizar estos mismos objetos. Después, abrir el dashboard y elegir un rango que incluya la nueva prueba.
 
 La IP de origen observada al atacar desde esta misma laptop suele ser la de la red de Docker; el panel no distingue a dos integrantes que usen el mismo host. No se debe interpretar esa IP como identidad del atacante.
 
@@ -55,6 +59,8 @@ Pruebas ejecutadas el **2026-11-10 UTC** contra `http://127.0.0.1:8080`, sin usa
 | Lectura de `/api/tickets/1` por `viewer` | `200`; Filebeat indexó `ticket_foreign_access` cerca de `18:28:16Z` |
 
 El `200` de JWT e IDOR es una **limitación comprobada**, no un bloqueo exitoso. El CRS analiza contenido HTTP, pero no valida la firma criptográfica de un JWT ni consulta la propiedad de un ticket en la base de datos. Bloquear indiscriminadamente `/api/users` o los IDs de tickets impediría funciones legítimas y sería un falso positivo. La remediación de ambos fallos en la API y su regresión corresponden a H4. Así, la condición de la guía que pide `403` para todos los PoC aún no se cumple para esos dos ataques; debe indicarse en la demo y en el informe, no ocultarse.
+
+El enunciado original en PDF indica **al menos cuatro vulnerabilidades explotadas en H2** y ejemplifica las tres detecciones de H3 con SQLi, XSS y ráfagas o escaneo por IP. Este repositorio documenta por ahora tres PoC de Burp; la cuarta depende del Equipo rojo. `DET-04` y `DET-05` preparan cobertura WAF adicional, pero sus pruebas locales no sustituyen la repetición de un ataque real del Equipo rojo. Además, el PDF usa Juice Shop como aplicación de referencia, mientras este repositorio usa Secure CRM: el grupo debe confirmar con el docente que esta sustitución corresponde a su proyecto autorizado.
 
 No se agregaron exclusiones nuevas porque las rutas normales probadas no tuvieron `403`. Ya existe la excepción `id:10001` para `Host: 127.0.0.1` frente a `920350`, limitada a loopback y únicamente a ese encabezado; permite usar la URL local de la demo. El riesgo aceptado es que la regla `920350` no evalúa ese encabezado en solicitudes con ese Host, aunque las demás reglas siguen activas. Si en la repetición aparece otro falso positivo, registrar método, ruta, parámetro, ID de regla y hora; agregar solo una excepción acotada en `waf-siem/waf/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf` o `RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf`, reiniciar el WAF y repetir la acción legítima y el ataque. No excluir `949110` ni desactivar el CRS.
 

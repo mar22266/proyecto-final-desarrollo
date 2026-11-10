@@ -1,0 +1,67 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Secure CRM - alcance de ZAP para Hito 2",
+    "version": "1.0.0",
+    "description": "Solo rutas locales de lectura y autenticacion. El escaneo no crea, edita ni elimina registros."
+  },
+  "servers": [
+    { "url": "http://localhost:8080" }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "health",
+        "responses": { "200": { "description": "API disponible" } }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": { "type": "string", "example": "viewer" },
+                  "password": { "type": "string", "example": "clave-de-prueba-invalida" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Inicio de sesion valido" },
+          "401": { "description": "Credenciales invalidas" }
+        }
+      }
+    },
+    "/api/tickets": {
+      "get": {
+        "operationId": "listTickets",
+        "parameters": [
+          { "name": "q", "in": "query", "schema": { "type": "string" }, "example": "factura" }
+        ],
+        "responses": { "200": { "description": "Lista de tickets" } }
+      }
+    },
+    "/api/tickets/{id}": {
+      "get": {
+        "operationId": "getTicket",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": { "200": { "description": "Ticket" } }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "operationId": "listUsers",
+        "responses": { "200": { "description": "Lista de usuarios" } }
+      }
+    }
+  }
+}

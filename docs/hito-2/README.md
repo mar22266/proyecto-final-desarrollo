@@ -2,6 +2,8 @@
 
 Aplicación: Secure CRM. El pipeline es responsabilidad de los cuatro integrantes. En este hito, el Equipo azul verifica los controles automáticos y justifica el umbral del *security gate* junto con el grupo. El Equipo rojo realiza por separado ZAP y Burp contra la instancia local a través del WAF en `DetectionOnly`, confirma al menos tres PoC y documenta OWASP Top 10:2025, CWE y CVSS v3.1.
 
+**Avance local del 10 de noviembre:** [verificación del entorno](verificacion-entorno-2026-11-10.md) y [exploración y escaneo ZAP por el WAF](zap-escaneo-2026-11-10.md). Este escaneo se ejecutó desde la computadora de André para preparar la evidencia del grupo; Davis y Julio deben revisarlo e integrarlo con sus PoC de Burp.
+
 ## Pipeline del grupo
 
 El workflow [`.github/workflows/devsecops.yml`](../../.github/workflows/devsecops.yml) se ejecuta en `push`, `pull_request` y manualmente. Usa el Compose de la raíz para el ZAP baseline automático sobre `http://localhost:3000/login`. La sesión ofensiva del Equipo rojo usa el Compose de `waf-siem/` y el puerto `8080`; son evidencias distintas.
@@ -67,7 +69,7 @@ Los controles automáticos dan una señal parcial sobre los [requisitos de segur
 ## Evidencia pendiente para cerrar H2 completo
 
 - Conservar la corrida de Actions de esta rama y el artefacto SBOM enlazados arriba; agregar las capturas de la corrida y del artefacto que pide la guía visual antes de la entrega en Canvas.
-- Equipo rojo: guardar en `docs/hito-2/` el reporte de ZAP contra `localhost:8080`, las parejas petición/respuesta de **al menos tres PoC** en Burp, la clasificación y el CVSS justificado métrica por métrica.
+- Equipo rojo: revisar el nuevo reporte de ZAP por `localhost:8080` que ya está en esta carpeta; incorporar las parejas petición/respuesta de **al menos tres PoC** de Burp, la clasificación y el CVSS justificado métrica por métrica.
 - Equipo rojo: repetir los PoC confirmados en Postman y anotar hora, ruta y resultado para que el Equipo azul pueda encontrarlos en Kibana durante H3.
 - Grupo: revisar conjuntamente el umbral anterior y registrar cualquier excepción con hallazgo, justificación, responsable y fecha de revisión.
 
@@ -75,4 +77,4 @@ No se atribuyen al Equipo rojo los reportes del baseline automático ni se prese
 
 ## Uso de IA en esta entrega
 
-Se usó **Codex (OpenAI)** para analizar el workflow y los artefactos de la corrida, proponer validaciones de reportes, ajustar los Dockerfiles y redactar esta línea base. La solicitud fue avanzar con el Hito 2 del Equipo azul. Los cambios generados son el ajuste de fiabilidad en `devsecops.yml`, el arranque de API y web como `node` y esta documentación. El grupo debe revisar el diff y la corrida antes de integrar la rama; no se han agregado dependencias ni secretos.
+Se usó **Codex (OpenAI)** para analizar el workflow y los artefactos de la corrida, proponer validaciones de reportes, ajustar los Dockerfiles y redactar esta línea base. También asistió en la ejecución y documentación del escaneo local de ZAP del 10 de noviembre. Los cambios generados son el ajuste de fiabilidad en `devsecops.yml`, el arranque de API y web como `node`, la definición de alcance de ZAP y esta documentación. El grupo debe revisar los reportes y hallazgos antes de presentarlos; no se han agregado dependencias ni secretos.

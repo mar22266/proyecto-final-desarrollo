@@ -74,9 +74,11 @@ Los tres PoC confirmados están documentados en [`poc-burp.md`](poc-burp.md) con
 
 | PoC | Hallazgo | OWASP | CWE | CVSS | Capturas |
 |---|---|---|---|---|---|
-| PoC-01 | JWT sin verificación de firma | A07 | CWE-347 | 9.8 Crítica | `shots/burp/repeater-jwt-forged.png` |
-| PoC-02 | SQL Injection en login | A05 | CWE-89 | 8.1 Alta | `shots/burp/repeater-sqli.png` |
-| PoC-03 | IDOR en tickets | A01 | CWE-639 | 8.1 Alta | `shots/burp/repeater-idor.png` |
+| PoC-01 | JWT sin verificación de firma | A07 | CWE-347 | 9.1 Crítica | [Burp](../shots/burp/repeater-jwt-forged.png) |
+| PoC-02 | SQL Injection en login | A05 | CWE-89 | 9.1 Crítica | [Burp](../shots/burp/repeater-sqli.png) |
+| PoC-03 | IDOR en tickets | A01 | CWE-639 | 8.1 Alta | [Burp](../shots/burp/repeater-idor.png) |
+
+Las dos puntuaciones 9.1 corresponden al vector `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N`; el IDOR (PR:L) calcula 8.1. Se verificaron con la [calculadora CVSS v3.1 de FIRST](https://www.first.org/cvss/calculator/3-1).
 
 ### Ejecución en Postman con marca de tiempo
 
@@ -92,17 +94,21 @@ Los PoC se reprodujeron el **2026-11-10 en entorno local** (UTC-6 / CST). La col
 
 > **Para el Equipo azul (H3):** buscar en Kibana en el índice `filebeat-*` el rango `2026-11-10T17:47:00Z` → `2026-11-10T17:48:00Z` filtrando por las rutas `/api/users`, `/api/auth/login` y `/api/tickets/`.
 
+La colección también se [verificó de forma independiente](verificacion-postman-2026-11-10.md) en el entorno local de André: 7 solicitudes, 8 aserciones correctas y 0 fallos. Esa corrida está separada de los horarios registrados por Davis.
+
 ### ZAP activo contra el WAF
 
 El escaneo ZAP activo contra `http://localhost:8080` está documentado en [`zap-escaneo-2026-11-10.md`](zap-escaneo-2026-11-10.md). Los reportes son [`zap-reporte.html`](zap-reporte.html) y [`zap-reporte.json`](zap-reporte.json). ZAP detectó SQLi (confianza baja) en `username` del login y en el parámetro `q` de tickets, coincidiendo con PoC-02. IDOR y JWT forjado no son detectables por escaneo automático — se confirman únicamente con los PoC de Burp.
 
 ## Pendiente para cierre definitivo de H2
 
-- [ ] Grupo: revisar conjuntamente el umbral del security gate y registrar excepciones con hallazgo, justificación, responsable y fecha.
-- [ ] Capturas de la corrida de Actions y del artefacto SBOM para la entrega en Canvas.
+- [ ] Grupo: validar conjuntamente el umbral del security gate y registrar cualquier excepción con hallazgo, justificación, responsable y fecha. La [hoja de revisión](revision-gate.md) está preparada, pero no contiene una aprobación atribuida a integrantes que no la han dado.
+- [ ] Guardar las capturas de la corrida de Actions y del artefacto SBOM que se solicitan para Canvas. Los [enlaces y metadatos comprobados](evidencia-pipeline-2026-11-10.md) están listos para obtenerlas.
 
 No se atribuyen al Equipo rojo los reportes del baseline automático ni se presentan como evidencia de sus PoC manuales.
 
 ## Uso de IA en esta entrega
 
 Se usó **Codex (OpenAI)** para analizar el workflow y los artefactos de la corrida, proponer validaciones de reportes, ajustar los Dockerfiles y redactar esta línea base. También asistió en la ejecución y documentación del escaneo local de ZAP del 10 de noviembre. Los cambios generados son el ajuste de fiabilidad en `devsecops.yml`, el arranque de API y web como `node`, la definición de alcance de ZAP y esta documentación. El grupo debe revisar los reportes y hallazgos antes de presentarlos; no se han agregado dependencias ni secretos.
+
+En la revisión del 10 de noviembre se utilizó también para recalcular las puntuaciones CVSS contra sus vectores, ejecutar una verificación local de la colección con Newman y redactar los resúmenes de evidencia. Las respuestas sin filtrar de Newman no se publicaron porque contienen tokens y datos de prueba. El grupo debe revisar estos cambios y validar el umbral antes de la entrega.

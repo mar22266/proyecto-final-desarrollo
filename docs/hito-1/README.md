@@ -95,7 +95,7 @@ Estos son hallazgos confirmados contra la instancia local via WAF (`http://local
 
 El mapa fue construido a partir del código fuente de `apps/api/src/`. Las rutas, métodos, roles, entradas y salidas se derivaron de los archivos `auth.ts`, `middleware/auth.ts`, `routes/tickets.ts`, `routes/users.ts` y `routes/dashboard.ts`. Los hallazgos se corresponden con las diez vulnerabilidades del tablero DAST de la guía del curso.
 
-**Hallazgo global crítico:** el middleware `authenticate` usa `jwt.decode()` en lugar de `jwt.verify()`, por lo que la firma del token nunca se valida. Cualquier usuario puede forjar un token con el rol que quiera. Esto compromete todas las rutas autenticadas (CVSS 9.8).
+**Hallazgo global crítico:** el middleware `authenticate` usa `jwt.decode()` en lugar de `jwt.verify()`, por lo que la firma del token nunca se valida. Cualquier usuario puede forjar un token con el rol que quiera. Esto compromete todas las rutas autenticadas (CVSS 9.1).
 
 **Verificación de puertos confirmada desde el host (Mac con Docker):**
 
@@ -113,8 +113,8 @@ El puerto `4000` no está publicado al host en la configuración actual del `doc
 
 | Prioridad | Hallazgo | Ruta | CVSS |
 |---|---|---|---|
-| 1 | JWT sin verificación de firma | Middleware / todas las rutas autenticadas | 9.8 Crítica |
-| 2 | SQL Injection en login | `POST /api/auth/login` | 8.1 Alta |
+| 1 | JWT sin verificación de firma | Middleware / todas las rutas autenticadas | 9.1 Crítica |
+| 2 | SQL Injection en login | `POST /api/auth/login` | 9.1 Crítica |
 | 3 | IDOR en tickets | `GET /PUT /DELETE /api/tickets/:id` | 8.1 Alta |
 
 La [lista de entrega para el Equipo rojo](PENDIENTE-RED-TEAM.md) queda cubierta con este mapa. Los PoC, escaneos ZAP/Burp, cálculo de CVSS completo y la clasificación final corresponden al Hito 2.

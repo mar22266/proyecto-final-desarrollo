@@ -68,8 +68,8 @@ Responsable: Davis Roldán (Equipo rojo). Derivado del código fuente en `apps/a
 
 | Prioridad | Hallazgo | Ruta | CVSS | Justificación |
 |---|---|---|---|---|
-| 1 | JWT sin verificación de firma | Middleware `auth.ts` / todas las rutas autenticadas | 9.8 Crítica | Impacto total en autenticación y autorización; explotación sin credenciales |
-| 2 | SQL Injection en login | `POST /api/auth/login` | 8.1 Alta | Permite bypass completo de autenticación sin conocer contraseña |
+| 1 | JWT sin verificación de firma | Middleware `auth.ts` / todas las rutas autenticadas | 9.1 Crítica | Impacto total en autenticación y autorización; explotación sin credenciales |
+| 2 | SQL Injection en login | `POST /api/auth/login` | 9.1 Crítica | Permite bypass completo de autenticación sin conocer contraseña |
 | 3 | IDOR en tickets | `GET /PUT /DELETE /api/tickets/:id` | 8.1 Alta | Lectura y modificación de datos de cualquier usuario con cualquier rol |
 
 ## Verificación de puertos (Equipo rojo)

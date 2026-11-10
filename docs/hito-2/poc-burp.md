@@ -18,7 +18,7 @@ Los tres PoC que siguen corresponden a los candidatos prioritarios señalados en
 | **OWASP Top 10:2025** | A07 · Identification and Authentication Failures |
 | **CWE** | CWE-347 · Improper Verification of Cryptographic Signature |
 | **Severidad** | Crítica |
-| **CVSS v3.1 Score** | **9.8** |
+| **CVSS v3.1 Score** | **9.1** |
 | **Vector** | `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N` |
 
 ### Métricas CVSS v3.1 justificadas
@@ -110,8 +110,8 @@ Reemplazar `jwt.decode()` por `jwt.verify(token, process.env.JWT_SECRET)` en `mi
 |---|---|
 | **OWASP Top 10:2025** | A05 · Injection |
 | **CWE** | CWE-89 · Improper Neutralization of Special Elements used in an SQL Command |
-| **Severidad** | Alta |
-| **CVSS v3.1 Score** | **8.1** |
+| **Severidad** | Crítica |
+| **CVSS v3.1 Score** | **9.1** |
 | **Vector** | `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N` |
 
 ### Métricas CVSS v3.1 justificadas
@@ -292,10 +292,10 @@ O mejor, usar una política de autorización centralizada basada en objeto (ABAC
 
 | PoC | Hallazgo | OWASP | CWE | CVSS | Severidad | Captura |
 |---|---|---|---|---|---|---|
-| PoC-01 | JWT sin verificación de firma | A07 | CWE-347 | **9.8** | Crítica | `repeater-jwt-forged.png` |
-| PoC-02 | SQL Injection en login | A05 | CWE-89 | **8.1** | Alta | `repeater-sqli.png` |
+| PoC-01 | JWT sin verificación de firma | A07 | CWE-347 | **9.1** | Crítica | `repeater-jwt-forged.png` |
+| PoC-02 | SQL Injection en login | A05 | CWE-89 | **9.1** | Crítica | `repeater-sqli.png` |
 | PoC-03 | IDOR en tickets | A01 | CWE-639 | **8.1** | Alta | `repeater-idor.png` |
 
-**Nota sobre encadenamiento:** PoC-02 (SQLi) permite obtener un token de admin sin credenciales. Con ese token, PoC-01 ya no es necesario para acceder a rutas administrativas — sin embargo, PoC-01 es independiente y más grave porque ni siquiera requiere credenciales conocidas; basta con fabricar cualquier token. La combinación de los tres PoC compromete confidencialidad e integridad de toda la aplicación.
+**Nota sobre encadenamiento:** PoC-02 (SQLi) permite obtener un token de admin sin credenciales. PoC-01 demuestra una falla independiente de validación de firma: basta con fabricar un token. Ambos hallazgos tienen CVSS 9.1 según los vectores documentados. La combinación de los tres PoC compromete confidencialidad e integridad de toda la aplicación.
 
 **Para H3 (Kibana):** los tres PoC se ejecutaron el 2026-11-09 entre las 09:50 y las 10:27 UTC-6 contra `http://localhost:8080`. El Equipo azul puede buscar en Kibana por `request.uri: "/api/auth/login"`, `request.uri: "/api/users"` y `request.uri: "/api/tickets/1"` en ese rango de tiempo para correlacionar los eventos del WAF.

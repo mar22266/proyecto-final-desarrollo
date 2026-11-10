@@ -12,7 +12,7 @@ Estos diez hallazgos corresponden al tablero de retos de la [guía DAST del curs
 ## H-01 · SQL Injection en login
 
 **Ubicación:** `apps/api/src/auth.ts:30` · `POST /api/auth/login`  
-**OWASP Top 10:2025:** A05 Injection · **CWE:** CWE-89 · **CVSS:** 8.1 Alta  
+**OWASP Top 10:2025:** A05 Injection · **CWE:** CWE-89 · **CVSS:** 9.1 Crítica
 `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N`
 
 **Payload:**
@@ -91,7 +91,7 @@ Authorization: Bearer <token-viewer>
 ## H-04 · JWT sin verificación de firma
 
 **Ubicación:** `apps/api/src/middleware/auth.ts:21`  
-**OWASP Top 10:2025:** A07 Authentication Failures · **CWE:** CWE-347 · **CVSS:** 9.8 Crítica  
+**OWASP Top 10:2025:** A07 Authentication Failures · **CWE:** CWE-347 · **CVSS:** 9.1 Crítica
 `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N`
 
 **Payload — token forjado con `role:"admin"` y firma falsa:**
@@ -261,10 +261,10 @@ POST /api/auth/login
 
 | # | Hallazgo | OWASP A: | CWE | CVSS | Severidad | Confirmado |
 |---|---|---|---|---|---|---|
-| H-01 | SQLi en login | A05 | CWE-89 | 8.1 | Alta | ✓ |
+| H-01 | SQLi en login | A05 | CWE-89 | 9.1 | Crítica | ✓ |
 | H-02 | XSS reflejado en búsqueda | A05 | CWE-79 | 7.6 | Alta | ✓ |
 | H-03 | IDOR en tickets | A01 | CWE-639 | 8.1 | Alta | ✓ |
-| H-04 | JWT sin firma | A07 | CWE-347 | 9.8 | Crítica | ✓ |
+| H-04 | JWT sin firma | A07 | CWE-347 | 9.1 | Crítica | ✓ |
 | H-05 | Hashes MD5 expuestos | A04 | CWE-327 | 6.5 | Media | ✓ |
 | H-06 | Cabeceras ausentes + cookie insegura | A02 | CWE-1004 | 4.7 | Media | ✓ |
 | H-07 | CORS permisivo | A02 | CWE-942 | 6.1 | Media | ✓ |
@@ -272,4 +272,4 @@ POST /api/auth/login
 | H-09 | Login sin rate limiting | A07 | CWE-307 | 5.3 | Media | ✓ |
 | H-10 | Errores verbosos con SQL | A02 | CWE-209 | 5.3 | Media | ✓ |
 
-**Para Hito 2:** los tres PoC prioritarios son H-04 (CVSS 9.8), H-01 y H-03 (CVSS 8.1 cada uno). Ver [superficie.md](superficie.md) para la trazabilidad completa.
+**Para Hito 2:** los tres PoC prioritarios son H-04 y H-01 (CVSS 9.1 cada uno), y H-03 (CVSS 8.1). Ver [superficie.md](superficie.md) para la trazabilidad completa.

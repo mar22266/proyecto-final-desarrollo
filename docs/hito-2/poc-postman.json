@@ -25,7 +25,7 @@
   ],
   "item": [
     {
-      "name": "PoC-01 · JWT sin verificación de firma (CVSS 9.8 Crítica)",
+      "name": "PoC-01 · JWT sin verificación de firma (CVSS 9.1 Crítica)",
       "item": [
         {
           "name": "1a · Obtener token viewer legítimo",
@@ -104,13 +104,13 @@
               "host": ["{{base_url}}"],
               "path": ["api", "users"]
             },
-            "description": "OWASP A07 · CWE-347 · CVSS 9.8 Crítica\n\nEnvía un JWT con payload {role:admin} y firma completamente falsa (AAAA...). El middleware usa jwt.decode() en lugar de jwt.verify(), por lo que la firma nunca se valida y el servidor devuelve 200 con la lista completa de usuarios incluyendo passwordHash.\n\nCausa raíz: apps/api/src/middleware/auth.ts:21 — jwt.decode(token) en lugar de jwt.verify(token, secret).\n\nEvidencia: docs/shots/burp/repeater-jwt-forged.png"
+            "description": "OWASP A07 · CWE-347 · CVSS 9.1 Crítica\n\nEnvía un JWT con payload {role:admin} y firma completamente falsa (AAAA...). El middleware usa jwt.decode() en lugar de jwt.verify(), por lo que la firma no se valida y el servidor devuelve 200 con la lista completa de usuarios incluyendo passwordHash.\n\nCausa raíz: apps/api/src/middleware/auth.ts:21 — jwt.decode(token) en lugar de jwt.verify(token, secret).\n\nEvidencia: docs/shots/burp/repeater-jwt-forged.png"
           }
         }
       ]
     },
     {
-      "name": "PoC-02 · SQL Injection en login (CVSS 8.1 Alta)",
+      "name": "PoC-02 · SQL Injection en login (CVSS 9.1 Crítica)",
       "item": [
         {
           "name": "2a · SQLi — obtener token admin sin contraseña",
@@ -148,7 +148,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "login"]
             },
-            "description": "OWASP A05 · CWE-89 · CVSS 8.1 Alta\n\nEl payload admin'-- cierra la cadena del username y comenta el resto de la consulta SQL:\n  SELECT * FROM users WHERE username = 'admin'--' AND password_hash = '...'\nLa condición de contraseña queda comentada → siempre devuelve el usuario admin.\n\nCausa raíz: apps/api/src/auth.ts:30 — consulta construida por concatenación de strings.\n\nEvidencia: docs/shots/burp/repeater-sqli.png"
+            "description": "OWASP A05 · CWE-89 · CVSS 9.1 Crítica\n\nEl payload admin'-- cierra la cadena del username y comenta el resto de la consulta SQL:\n  SELECT * FROM users WHERE username = 'admin'--' AND password_hash = '...'\nLa condición de contraseña queda comentada → siempre devuelve el usuario admin.\n\nCausa raíz: apps/api/src/auth.ts:30 — consulta construida por concatenación de strings.\n\nEvidencia: docs/shots/burp/repeater-sqli.png"
           }
         },
         {

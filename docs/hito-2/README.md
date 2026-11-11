@@ -64,7 +64,25 @@ Este gate no sustituye las pruebas de autorización por objeto, firma JWT o regr
 
 ## Relación con el diseño del Hito 1
 
-Los controles automáticos dan una señal parcial sobre los [requisitos de seguridad](../hito-1/README.md#5-requisitos-de-seguridad-verificables): Semgrep revisa patrones de código y configuración; SCA revisa dependencias; ZAP revisa pasivamente la superficie pública; el SBOM inventaría componentes. Los requisitos RS-01 a RS-05 necesitan también los PoC y pruebas de regresión. RS-06 a RS-08 requieren evidencia del WAF/SIEM en H3. La matriz final debe distinguir qué control observó realmente cada hallazgo.
+Los controles automáticos dan una señal parcial sobre los [requisitos de seguridad](../hito-1/README.md#5-requisitos-de-seguridad-verificables): Semgrep revisa patrones de código y configuración; SCA revisa dependencias; ZAP revisa pasivamente la superficie pública; el SBOM inventaría componentes. Los requisitos RS-01 a RS-05 necesitan también los PoC y pruebas de regresión. RS-06 a RS-08 requieren evidencia del WAF/SIEM en H3.
+
+### Trazabilidad por operación de negocio
+
+Los códigos A1–A2, T1–T5, U1–U3 y O1 proceden del [DFD detallado de Hito 1](../hito-1/dfd-casos.svg) y de su [tabla de navegación](../hito-1/README.md). Esta matriz separa lo demostrado en H2 de lo que solo se identificó como riesgo o quedó para otra fase. Las señales del Equipo azul se explican en [Hito 3](../hito-3/README.md).
+
+| Operación de H1 | Riesgo relacionado | Evidencia disponible en H2 | Alcance real / continuación |
+|---|---|---|---|
+| A1 · Login | H-01 SQLi; H-09 intentos ilimitados | [PoC-02 Burp](poc-burp.md) y [repetición Postman](poc-postman.json) confirman login de administrador sin contraseña; [ZAP por el WAF](zap-escaneo-2026-11-10.md) señaló SQLi en `username` con confianza baja. | SQLi sí tiene PoC; H-09 no tiene una PoC individual en esta entrega. `DET-01` de H3 observa SQLi. |
+| A1–U3 · JWT compartido | H-04 firma no verificada | [PoC-01 Burp](poc-burp.md) envió JWT forjado a `GET /api/users` y recibió 200; Postman repitió el resultado. | La PoC confirma el fallo común de autenticación, no que se hayan atacado por separado todas las rutas. `DET-02` de H3 registra la firma inválida. |
+| A2 · Panel | Acceso mediante H-04 | La PoC de JWT prueba el middleware compartido; no hay PoC específica de `GET /api/dashboard`. | La ruta se incluye como flujo legítimo en H3. |
+| T1 · Lista y búsqueda | H-02 XSS reflejado; SQLi potencial en `q` | El [ZAP activo](zap-escaneo-2026-11-10.md) señaló SQLi en `q` con confianza baja. | Ni ese resultado ni el ZAP baseline equivalen a una PoC Burp de XSS o SQLi de búsqueda. `DET-04` de H3 procede de una prueba local de XSS. |
+| T2 · Leer ticket | H-03 IDOR | [PoC-03 Burp](poc-burp.md) y Postman documentan lectura de tickets ajenos con HTTP 200. | `DET-03` de H3 registra el acceso, pero la respuesta vulnerable sigue siendo 200. |
+| T3–T5 · Crear, editar/cerrar, eliminar | Autorización por rol u objeto insuficiente, descrita en [superficie de ataque](../hito-1/superficie.md). | No hay PoC individual de abuso de estas tres operaciones en H2. | H3 comprobó el ciclo **legítimo** 201/200/200; eso no demuestra autorización correcta. |
+| U1 · Listar usuarios | H-05 hashes expuestos; H-04 JWT | [PoC-01 Burp](poc-burp.md) muestra la lista con `passwordHash` al usar un JWT forjado. | Se observó la exposición de hashes en esa respuesta; no es una cuarta PoC independiente. `DET-02` de H3 se activa por la firma inválida. |
+| U2–U3 · Crear usuario/cambiar rol | H-08 escalada por rol | La [superficie de H1](../hito-1/superficie.md) documenta las rutas y el riesgo. No hay PoC individual de H2 en estas operaciones. | Su verificación ofensiva y la regresión de autorización siguen pendientes. |
+| O1 · Investigar | Pérdida de atribución si faltan actor, objeto o resultado | Las [marcas de tiempo de Postman](verificacion-postman-2026-11-10.md) y los logs del WAF permiten buscar las solicitudes. | H3 dispone de búsquedas y dashboard; falta la correlación y captura de la demo conjunta con Red. |
+
+Semgrep, SCA y SBOM son controles del código, dependencias e inventario, respectivamente: sus resultados no se atribuyen a una operación concreta sin evidencia adicional. El ZAP baseline automático solo recorre la web pública; las PoC autenticadas de esta tabla vienen de Burp/Postman por el WAF.
 
 ## Evidencia del Equipo rojo · Hito 2
 

@@ -17,6 +17,28 @@ El DFD, STRIDE y PASTA se revisan entre los cuatro. El mapa de superficie de ata
 
 [Fuente editable del diagrama](dfd.dot).
 
+### Navegación y operaciones completas
+
+![Navegación y flujos por operación de Secure CRM](dfd-casos.svg)
+
+[Fuente editable del diagrama detallado](dfd-casos.dot). Las líneas azules discontinuas representan navegación entre pantallas; las líneas continuas representan solicitudes, respuestas y lecturas o escrituras de datos. Una flecha con punta en ambos extremos muestra la petición y su respuesta por el mismo enlace lógico. Los códigos A1–A2, T1–T5 y U1–U3 se explican abajo. El navegador llama a `:8080`; la API `:4000` permanece dentro de Docker.
+
+| Código | Desde la pantalla y acción | Datos que atraviesan WAF → API → almacén | Respuesta y siguiente pantalla | Amenaza para el negocio |
+|---|---|---|---|---|
+| A1 | `/` redirige a `/login` sin usuario local; se envían usuario y contraseña. | `POST /api/auth/login` consulta `users` en SQLite. | Cuenta, JWT y cookie `session`; la web guarda el JWT y navega a `/dashboard`. Un error de credenciales devuelve 401. | H-01 permite entrar sin contraseña; H-09 permite intentos repetidos; H-06 afecta la cookie. |
+| A2 | `/dashboard` carga indicadores tras el acceso; también se alcanza desde el menú. | `GET /api/dashboard` con JWT; la API agrega tickets por estado, prioridad y agente y consulta los cinco recientes. | Totales y gráficos; desde allí se abre `/tickets` o un ticket reciente. | H-04 permite que un token forjado alcance esta ruta y vea datos operativos. |
+| T1 | `/tickets` lista y busca por `q`. | `GET /api/tickets?q=` con JWT; la API consulta `tickets` y nombres de `users`. | Lista y término de búsqueda; desde ella se abre `/tickets/new` o `/tickets/[id]`. | H-02 XSS reflejado y la concatenación SQL de `q` exponen al usuario y a los datos. |
+| T2 | `/tickets/[id]` abre un ticket elegido en lista o panel. | `GET /api/tickets/:id` con JWT e identificador; SQLite devuelve ticket, cliente, creador y asignado. | Detalle editable en la misma pantalla; 404 si no existe. | H-03 devuelve un ticket ajeno: fuga de datos del cliente. |
+| T3 | `/tickets/new` envía asunto, descripción, cliente, correo, prioridad y estado. | `POST /api/tickets` con JWT; la API inserta en `tickets` y usa el identificador del token como `created_by_id`. | HTTP 201 y ticket creado; la web navega a `/tickets/[id]`. | La ruta admite `viewer` y campos controlados por el cliente; pueden crearse solicitudes indebidas o con datos alterados. |
+| T4 | `/tickets/[id]` guarda cambios de texto, prioridad o estado; `closed` equivale a cierre. | `PUT /api/tickets/:id` con JWT, id y cuerpo; la API actualiza `tickets`. La API también admite `assigneeId`, aunque el formulario actual no lo edita. | Ticket actualizado en la misma pantalla; 404 si no existe. | Falta autorización por objeto: se puede alterar o cerrar un ticket ajeno. |
+| T5 | `/tickets/[id]` confirma la eliminación. | `DELETE /api/tickets/:id` con JWT e id; la API borra en SQLite. | `{ok:true}` y regreso a `/tickets`; 404 si no existe. | Cualquier usuario autenticado puede borrar solicitudes ajenas y afectar la continuidad de atención. |
+| U1 | `/admin` carga la lista de cuentas; el menú solo se muestra al rol `admin` en la web. | `GET /api/users` con JWT; la API consulta `users`. | Lista de cuentas en la misma pantalla. | H-05 expone hashes; ocultar el menú no autoriza la API y H-04 permite forjar un rol. |
+| U2 | `/admin` crea cuenta con usuario, correo, nombre, contraseña y rol. | `POST /api/users` con JWT; la API inserta la cuenta y el rol en `users`. | HTTP 201 y recarga de la lista. | H-08 permite crear una cuenta administrativa desde una sesión sin ese permiso. |
+| U3 | `/admin` cambia el rol desde el selector de una cuenta. | `PUT /api/users/:id/role` con JWT, id y rol; la API modifica `users`. | Rol actualizado y recarga de la lista. | H-08 permite elevar privilegios y romper la separación de funciones. |
+| O1 | El Equipo azul abre Kibana y busca por hora, ruta o regla. | Las solicitudes A1–U3 generan logs del WAF; Filebeat los envía a Elasticsearch. | Kibana muestra los eventos encontrados. | Sin actor, objeto y resultado suficientes, no se puede atribuir una modificación o investigar un abuso (RS-07). |
+
+**Operaciones relacionadas:** `GET /api/users/:id` existe en la API y devuelve una cuenta con `passwordHash`, pero la interfaz actual no tiene una pantalla que la invoque; conserva el riesgo de H-05. `GET /api/health` es una verificación técnica del entorno, no una operación de negocio. Al cerrar sesión, la web borra JWT y usuario del almacenamiento local y vuelve a `/login`; no llama a un endpoint de cierre de sesión. Todas las solicitudes que pasan por el WAF alimentan sus logs y la cadena Filebeat → Elasticsearch → Kibana. Los eventos específicos de la aplicación deben evaluarse por separado para RS-07.
+
 El mismo DFD reúne cuatro casos de negocio en orden. Sus números se mantienen en PASTA, en la descomposición y en la matriz de riesgos de este documento. Los tres primeros comparten el WAF y la API; el cuarto recibe eventos de esas solicitudes.
 
 | Orden | Recorrido | Datos que entran y salen | Resultado de negocio |
@@ -82,7 +104,7 @@ El uso en este curso es local y con datos de prueba. La disponibilidad y trazabi
 | 3 · Usuarios | Usuario autenticado envía JWT y datos de cuenta o rol a `/api/users`. | La API consulta o modifica `users`; devuelve datos de cuenta o resultado del cambio. | Cliente → API → SQLite: se debe autorizar la operación administrativa y limitar los campos de salida. |
 | 4 · Investigación | El WAF registra solicitudes y el Equipo azul busca eventos en Kibana. | Logs WAF → Filebeat → Elasticsearch → Kibana; vuelve un resultado de búsqueda al analista. | Tráfico → registro → SIEM: hacen falta eventos completos, atribuibles y sin secretos. |
 
-Los cuatro casos comparten los mismos componentes del [DFD](dfd.svg). Un usuario normalmente ejecuta el caso 1 antes de los casos 2 o 3; el caso 4 observa cualquiera de ellos. El WAF ve HTTP, pero no puede decidir por sí solo la propiedad de un ticket ni el permiso de cambiar un rol.
+Los cuatro casos comparten los mismos componentes del [DFD general](dfd.svg); el [DFD detallado](dfd-casos.svg) separa cada operación y su navegación. Un usuario normalmente ejecuta el caso 1 antes de los casos 2 o 3; el caso 4 observa cualquiera de ellos. El WAF ve HTTP, pero no puede decidir por sí solo la propiedad de un ticket ni el permiso de cambiar un rol.
 
 ### Etapa 4 · Análisis de amenazas
 

@@ -1,0 +1,104 @@
+digraph SecureCRM_Casos {
+  graph [rankdir=LR, bgcolor="white", fontname="Arial", fontsize=18,
+    label="Secure CRM · navegación y flujos de datos por operación de negocio",
+    labelloc=t, pad=0.4, nodesep=0.38, ranksep=0.8, splines=polyline];
+  node [fontname="Arial", fontsize=10, shape=box, style="rounded,filled",
+    color="#476487", fillcolor="#eef4fb", margin="0.14,0.10"];
+  edge [fontname="Arial", fontsize=8, color="#53677e", arrowsize=0.65];
+
+  subgraph cluster_web {
+    label="Límite A · navegador y web Next.js :3000";
+    color="#9ebad6"; style="rounded,dashed";
+    home [label="/\nredirige según sesión"];
+    login_page [label="/login\ncredenciales", fillcolor="#dfeeff"];
+    dashboard_page [label="/dashboard\nindicadores", fillcolor="#dfeeff"];
+    list_page [label="/tickets\nlista y búsqueda", fillcolor="#dfeeff"];
+    new_page [label="/tickets/new\nformulario", fillcolor="#dfeeff"];
+    detail_page [label="/tickets/[id]\nleer, editar, eliminar", fillcolor="#dfeeff"];
+    admin_page [label="/admin\nusuarios y roles", fillcolor="#dfeeff"];
+  }
+
+  waf [label="WAF :8080\nModSecurity + CRS\nproxy y registro", fillcolor="#fff0db", color="#bd8744"];
+
+  subgraph cluster_api {
+    label="Límite B · API Express :4000 (red interna Docker)";
+    color="#91abc4"; style="rounded,dashed";
+    login_api [label="A1 · POST login\nconsultar cuenta / emitir JWT"];
+    jwt [label="Middleware compartido\nauthenticate() · H-04 JWT", fillcolor="#ffe3df", color="#c77368"];
+    dash_api [label="A2 · GET dashboard\ncontar y resumir"];
+    list_api [label="T1 · GET tickets\nlistar o buscar q"];
+    read_api [label="T2 · GET ticket/:id\nleer detalle"];
+    create_api [label="T3 · POST tickets\ncrear y asignar"];
+    update_api [label="T4 · PUT ticket/:id\neditar o cerrar; API admite asignación"];
+    delete_api [label="T5 · DELETE ticket/:id\neliminar"];
+    users_api [label="U1 · GET users\nlistar cuentas"];
+    create_user_api [label="U2 · POST users\ncrear cuenta"];
+    role_api [label="U3 · PUT users/:id/role\ncambiar permiso"];
+  }
+
+  users_db [label="D1 · SQLite\nusers / roles / hash", shape=cylinder,
+    fillcolor="#e8f5ea", color="#6d9e72"];
+  tickets_db [label="D2 · SQLite\ntickets / cliente / estado", shape=cylinder,
+    fillcolor="#e8f5ea", color="#6d9e72"];
+
+  subgraph cluster_siem {
+    label="Límite C · observabilidad del laboratorio";
+    color="#ad9ac9"; style="rounded,dashed";
+    logs [label="D3 · logs WAF\nacceso + auditoría", shape=cylinder,
+      fillcolor="#e8f5ea", color="#6d9e72"];
+    filebeat [label="Filebeat\nrecolectar"];
+    elastic [label="D4 · Elasticsearch\nfilebeat-*", shape=cylinder,
+      fillcolor="#e8f5ea", color="#6d9e72"];
+    kibana [label="Kibana :5601\nEquipo azul consulta", fillcolor="#eee5fa"];
+  }
+
+  // La navegación es local en la web: líneas azules punteadas, sin llamada API.
+  edge [color="#3979b7", style=dashed, constraint=false];
+  home -> login_page [label="sin sesión"];
+  home -> dashboard_page [label="sesión local"];
+  login_page -> dashboard_page [dir=both, label="ingresar / salir"];
+  dashboard_page -> list_page [dir=both, label="menú Panel / Tickets"];
+  dashboard_page -> detail_page [label="ticket reciente"];
+  dashboard_page -> admin_page [dir=both, label="menú Panel / Admin"];
+  list_page -> new_page [label="Nuevo"];
+  list_page -> detail_page [dir=both, label="seleccionar / volver"];
+  new_page -> detail_page [label="creación correcta"];
+
+  // Solicitudes y respuestas de la web: todas las llamadas API pasan por el WAF.
+  edge [color="#53677e", style=solid, constraint=true];
+  login_page -> waf [dir=both, label="A1 credenciales / JWT + usuario"];
+  dashboard_page -> waf [dir=both, label="A2 GET /api/dashboard\nJWT / métricas"];
+  list_page -> waf [dir=both, label="T1 GET /api/tickets?q\nJWT / lista + búsqueda"];
+  new_page -> waf [dir=both, label="T3 POST /api/tickets\nJWT + datos / ticket 201"];
+  detail_page -> waf [dir=both, label="T2 GET; T4 PUT; T5 DELETE\nJWT + id + cambios / resultado"];
+  admin_page -> waf [dir=both, label="U1 GET; U2 POST; U3 PUT\nJWT + cuenta/rol / resultado"];
+
+  waf -> login_api [dir=both, label="A1 login / token"];
+  waf -> jwt [dir=both, label="A2, T1–T5, U1–U3\nAuthorization / respuesta"];
+  jwt -> dash_api [dir=both, label="A2 / métricas"];
+  jwt -> list_api [dir=both, label="T1 / lista"];
+  jwt -> read_api [dir=both, label="T2 / detalle"];
+  jwt -> create_api [dir=both, label="T3 / creado"];
+  jwt -> update_api [dir=both, label="T4 / actualizado"];
+  jwt -> delete_api [dir=both, label="T5 / ok"];
+  jwt -> users_api [dir=both, label="U1 / cuentas"];
+  jwt -> create_user_api [dir=both, label="U2 / cuenta creada"];
+  jwt -> role_api [dir=both, label="U3 / nuevo rol"];
+
+  login_api -> users_db [dir=both, label="A1 credenciales / cuenta"];
+  dash_api -> tickets_db [dir=both, label="A2 conteos / recientes"];
+  dash_api -> users_db [dir=both, label="A2 nombres de agentes"];
+  list_api -> tickets_db [dir=both, label="T1 q / tickets"];
+  read_api -> tickets_db [dir=both, label="T2 id / ticket"];
+  create_api -> tickets_db [dir=both, label="T3 INSERT / ticket"];
+  update_api -> tickets_db [dir=both, label="T4 UPDATE / ticket"];
+  delete_api -> tickets_db [dir=both, label="T5 DELETE / cambios"];
+  users_api -> users_db [dir=both, label="U1 SELECT / cuentas"];
+  create_user_api -> users_db [dir=both, label="U2 INSERT / cuenta"];
+  role_api -> users_db [dir=both, label="U3 UPDATE / rol"];
+
+  waf -> logs [label="todas: HTTP y reglas"];
+  logs -> filebeat [label="lectura"];
+  filebeat -> elastic [label="eventos"];
+  elastic -> kibana [label="búsquedas"];
+}

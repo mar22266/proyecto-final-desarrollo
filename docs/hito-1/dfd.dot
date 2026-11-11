@@ -1,35 +1,67 @@
 digraph SecureCRM {
-  graph [rankdir=LR, bgcolor="white", fontname="Arial", fontsize=16, label="DFD · Secure CRM detrás del WAF (Hito 0–1)", labelloc=t, pad=0.35, nodesep=0.5, ranksep=0.8];
-  node [fontname="Arial", fontsize=10, shape=box, style="rounded,filled", color="#476487", fillcolor="#eef4fb", margin="0.14,0.10"];
+  graph [rankdir=LR, bgcolor="white", fontname="Arial", fontsize=17,
+    label="DFD · Secure CRM: cuatro recorridos de negocio (Hito 1)",
+    labelloc=t, pad=0.4, nodesep=0.5, ranksep=0.9, splines=polyline];
+  node [fontname="Arial", fontsize=10, shape=box, style="rounded,filled",
+    color="#476487", fillcolor="#eef4fb", margin="0.16,0.11"];
   edge [fontname="Arial", fontsize=9, color="#50647b", arrowsize=0.7];
 
-  subgraph cluster_usuario {
-    label="Límite 1 · dispositivo del usuario";
+  subgraph cluster_cliente {
+    label="Límite de confianza 1 · dispositivo del usuario";
     color="#acc4dc"; style="rounded,dashed";
-    browser [label="Navegador / Postman\nusuarios de prueba", shape=box];
-    analyst [label="Equipo azul\nnavegador local", shape=box];
+    browser [label="Usuario\nNavegador / Postman"];
+    analyst [label="Equipo azul\nNavegador local"];
   }
 
-  subgraph cluster_app {
-    label="Límite 2 · red privada de Docker";
+  subgraph cluster_docker {
+    label="Límite de confianza 2 · servicios del laboratorio";
     color="#77a6ce"; style="rounded,dashed";
-    web [label="Web · Next.js\n:3000 en 127.0.0.1", fillcolor="#e7f3ff"];
-    waf [label="WAF · ModSecurity + CRS\n:8080 en 127.0.0.1", fillcolor="#fff0db", color="#bd8744"];
-    api [label="API · Express\n:4000 solo interna", fillcolor="#e7f3ff"];
-    sqlite [label="D1 · SQLite\nusuarios y tickets", shape=cylinder, fillcolor="#e8f5ea", color="#6d9e72"];
-    logs [label="D2 · logs WAF\nvolumen Docker", shape=cylinder, fillcolor="#e8f5ea", color="#6d9e72"];
+    web [label="Web · Next.js\n:3000 local", fillcolor="#e7f3ff"];
+    waf [label="WAF · ModSecurity + CRS\n:8080 local", fillcolor="#fff0db", color="#bd8744", ordering=out];
+
+    subgraph cluster_api {
+      label="API Express · :4000 solo interno";
+      color="#9bb9d0"; style="rounded";
+      auth [label="1 · Autenticar\nPOST /api/auth/login", fillcolor="#e7f3ff"];
+      tickets [label="2 · Gestionar tickets\n/api/tickets", fillcolor="#e7f3ff"];
+      users [label="3 · Gestionar usuarios y roles\n/api/users", fillcolor="#e7f3ff"];
+    }
+
+    db_users [label="D1 · SQLite\ntabla users", shape=cylinder,
+      fillcolor="#e8f5ea", color="#6d9e72"];
+    db_tickets [label="D2 · SQLite\ntabla tickets", shape=cylinder,
+      fillcolor="#e8f5ea", color="#6d9e72"];
+    logs [label="D3 · logs WAF\nacceso y auditoría", shape=cylinder,
+      fillcolor="#e8f5ea", color="#6d9e72"];
     filebeat [label="Filebeat\nrecolector", fillcolor="#f1eafd"];
-    elastic [label="D3 · Elasticsearch\níndice filebeat-*", shape=cylinder, fillcolor="#e8f5ea", color="#6d9e72"];
-    kibana [label="Kibana\n:5601 en 127.0.0.1", fillcolor="#f1eafd"];
+    elastic [label="D4 · Elasticsearch\níndice filebeat-*", shape=cylinder,
+      fillcolor="#e8f5ea", color="#6d9e72"];
+    kibana [label="4 · Consultar eventos\nKibana :5601 local", fillcolor="#f1eafd"];
   }
 
-  browser -> web [label="HTML / JS · GET\ncruza límite 1→2"];
-  browser -> waf [label="API · HTTP local\nlogin, tickets, usuarios\ncruza límite 1→2"];
-  waf -> api [label="proxy HTTP interno"];
-  api -> sqlite [label="consultas SQL"];
-  waf -> logs [label="access + auditoría"];
-  logs -> filebeat [label="lectura de logs"];
-  filebeat -> elastic [label="eventos"];
-  elastic -> kibana [label="búsqueda"];
-  analyst -> kibana [label="Discover · :5601\ncruza límite 1→2"];
+  browser -> web [label="carga HTML / JS"];
+  web -> browser [label="interfaz", constraint=false];
+  browser -> waf [label="1 credenciales\n2 datos de ticket + JWT\n3 datos de usuario/rol + JWT"];
+  waf -> auth [label="1 solicitud de login"];
+  auth -> db_users [label="1 consulta de cuenta"];
+  db_users -> auth [label="1 cuenta y rol", constraint=false];
+  auth -> waf [label="1 usuario + JWT", constraint=false];
+
+  waf -> tickets [label="2 crear, consultar\no actualizar ticket"];
+  tickets -> db_tickets [label="2 datos del ticket"];
+  db_tickets -> tickets [label="2 ticket y estado", constraint=false];
+  tickets -> db_users [label="2 creador / asignado", style=dashed];
+  tickets -> waf [label="2 ticket o listado", constraint=false];
+
+  waf -> users [label="3 alta / consulta\no cambio de rol"];
+  users -> db_users [label="3 cuenta y rol"];
+  db_users -> users [label="3 datos de usuario", constraint=false];
+  users -> waf [label="3 resultado", constraint=false];
+  waf -> browser [label="1–3 respuesta HTTP", constraint=false];
+
+  waf -> logs [label="4 solicitudes y respuestas"];
+  logs -> filebeat [label="4 lectura de eventos"];
+  filebeat -> elastic [label="4 eventos indexados"];
+  elastic -> kibana [label="4 búsquedas y resultados"];
+  analyst -> kibana [label="4 consulta en Discover"];
 }

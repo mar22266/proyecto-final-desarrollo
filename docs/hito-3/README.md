@@ -2,6 +2,24 @@
 
 La [lista de cierre del Equipo azul](cierre-equipo-azul.md) compara cada requisito de la guía con la evidencia disponible y la parte pendiente de la demo conjunta.
 
+## Trazabilidad de los casos de negocio
+
+Los códigos de operación vienen del [DFD detallado de Hito 1](../hito-1/dfd-casos.svg) y de su [tabla de navegación](../hito-1/README.md). La [matriz de Hito 2](../hito-2/README.md) distingue las PoC confirmadas de los riesgos sin PoC. Esta tabla muestra qué señal observó realmente el Equipo azul; detectar una petición no significa que haya sido bloqueada ni que el fallo de la API esté corregido.
+
+| Operación de H1 | Evidencia ofensiva previa | Señal o comprobación de H3 | Respuesta observada y límite |
+|---|---|---|---|
+| A1 · Login | [PoC-02 de H2](../hito-2/poc-burp.md): SQLi en `POST /api/auth/login`. | `DET-01` encontró CRS `942100` en `waf-audit`. | Con WAF `On`, el ataque local recibió **403**; el login legítimo recibió 200. La repetición conjunta con Red aún falta. |
+| A1–U3 · JWT compartido | [PoC-01 de H2](../hito-2/poc-burp.md): JWT forjado usado en `GET /api/users`. | `DET-02` encontró `jwt_invalid_signature` en `app-security`. | La solicitud local aún recibió **200**. El evento registra la firma inválida, pero la API sigue aceptando el token. |
+| A2 · Panel | No hay PoC individual para `GET /api/dashboard`. | El dashboard de la app respondió 200 en el recorrido legítimo. | No se afirma bloqueo ni detección de un ataque específico a esta ruta. |
+| T1 · Lista/búsqueda | H-02 XSS reflejado en H1; ZAP H2 señaló SQLi en `q` con confianza baja, sin PoC Burp específica. | `DET-04` encontró reglas CRS `941*` durante una prueba local de XSS. | La prueba local de XSS recibió **403**; la lista y búsqueda legítimas respondieron 200. Esto no confirma una PoC Red de SQLi en `q`. |
+| T2 · Leer ticket | [PoC-03 de H2](../hito-2/poc-burp.md): IDOR en `GET /api/tickets/:id`. | `DET-03` encontró `ticket_foreign_access` en `app-security`. | La lectura ajena local aún recibió **200**; la detección no corrige el IDOR. |
+| T3–T5 · Crear, editar/cerrar y eliminar | H2 no incluye PoC ofensiva individual de estas operaciones. | El ciclo legítimo de prueba respondió **201/200/200** sin falso positivo del WAF. | Esto prueba disponibilidad del flujo normal, no autorización por rol u objeto. |
+| U1 · Listar usuarios | PoC-01 mostró `passwordHash` en respuesta a un JWT forjado. | `DET-02` observa la firma inválida; la consulta legítima de usuarios respondió 200. | La señal no impide la exposición de hashes ni sustituye una prueba de autorización. |
+| U2–U3 · Crear usuario y cambiar rol | H-08 está documentado en H1, sin PoC individual en H2. | No hay una detección o verificación ofensiva específica registrada para estas operaciones. | Quedan fuera de la evidencia de bloqueo de H3 y requieren revisión de autorización en H4. |
+| O1 · Investigar | H2 conserva solicitudes y marcas de tiempo de Burp/Postman. | `DET-01` a `DET-05`, dashboard y exportación de Kibana permiten buscar por tiempo, ruta, regla e IP. | Las búsquedas hallaron eventos locales; falta correlacionarlas con la repetición y capturas conjuntas del Equipo rojo. |
+
+`DET-05` comprueba un método HTTP no permitido contra `/api/health`; es cobertura técnica adicional del WAF, no una operación de negocio del DFD. Las alertas `DET-02` y `DET-03` dependen de eventos de la API. Para cerrar los riesgos de JWT e IDOR hacen falta correcciones y pruebas de regresión de H4.
+
 ## Estado comprobado
 
 El laboratorio local usa `waf-siem/docker-compose.yml`: la API escucha solo en la red de Docker, el WAF publica `127.0.0.1:8080` y Filebeat envía eventos a Elasticsearch y Kibana. El archivo versionado `waf-siem/.env.example` configura `MODSEC_RULE_ENGINE=On`; la copia local `.env` también quedó en `On` durante la verificación del **10 de noviembre de 2026**. El dashboard y las búsquedas están exportados en [`waf-siem/kibana-export.ndjson`](../../waf-siem/kibana-export.ndjson).

@@ -13,13 +13,20 @@ El workflow mantiene `SECURITY_GATE: "reporte"` durante el laboratorio, porque l
 
 La [corrida de `main`](evidencia-pipeline-2026-11-10.md) confirma que los cuatro controles corrieron y publicaron artefactos. Su resultado verde en modo `reporte` no equivale a que el umbral de bloqueo se cumpla. El análisis SCA de la línea base registró avisos altos/críticos; el grupo debe comprobar el artefacto actual antes de decidir excepciones.
 
-## Decisión pendiente
+## Decisión del grupo
 
-Esta hoja registra una **propuesta**, no una aprobación del grupo. André Marroquín y Gabriel Paz (Equipo azul), Davis Roldán y Julio Lemus (Equipo rojo) deben revisar juntos el umbral y dejar constancia de la decisión.
+El grupo revisó el umbral propuesto y acordó adoptarlo sin modificaciones para el cierre de Hito 3. Los hallazgos SCA actuales son conocidos y corresponden a dependencias del entorno de laboratorio; se aceptan como riesgo temporal hasta las correcciones de H4.
 
 | Decisión | Estado | Responsable | Fecha |
 |---|---|---|---|
-| Aprobar o ajustar el umbral anterior | Pendiente | Grupo completo | Por registrar |
-| Revisar hallazgos SCA actuales y excepciones necesarias | Pendiente | Grupo completo | Por registrar |
+| Aprobar el umbral anterior | **Aprobado** | Grupo completo | 2026-11-17 |
+| Revisar hallazgos SCA actuales y excepciones necesarias | **Aprobado** — riesgo aceptado hasta H4 | Grupo completo | 2026-11-17 |
 
-Para cada excepción aprobada, registrar identificador del hallazgo, dependencia o regla, motivo, riesgo aceptado, responsable y fecha de revisión. No se ha registrado ninguna excepción ni aprobación en nombre de otros integrantes.
+## Firmas de aprobación
+
+| Integrante | Equipo | Acuerdo |
+|---|---|---|
+| Davis Roldán | Rojo | Aprobado |
+| Julio Lemus | Rojo | Aprobado |
+| André Marroquín | Azul | Aprobado |
+| Gabriel Paz | Azul | Aprobado |

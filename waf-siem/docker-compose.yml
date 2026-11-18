@@ -69,6 +69,7 @@ services:
       - waf-logs:/var/log/waf
       # Ajuste de falsos positivos (Hito 3): editen estos archivos y reinicien el WAF
       - ./waf/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:/etc/modsecurity.d/owasp-crs/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:ro
+      - ./waf/REQUEST-901-CRM-CUSTOM-RULES.conf:/etc/modsecurity.d/owasp-crs/rules/REQUEST-901-CRM-CUSTOM-RULES.conf:ro
       - ./waf/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf:/etc/modsecurity.d/owasp-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf:ro
 
   # Secure CRM: la API solo escucha dentro de esta red; el WAF es su entrada.

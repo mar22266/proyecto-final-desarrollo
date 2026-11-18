@@ -37,6 +37,7 @@ El entorno trae la infraestructura. **Ustedes construyen la defensa**: conectan 
 | `.env.example` | Variables a ajustar: a dónde reenvía el WAF, puerto, modo del WAF. Cópienlo a `.env`. |
 | `filebeat.yml` | Qué logs se envían al SIEM. |
 | `waf/REQUEST-900-…conf`, `waf/RESPONSE-999-…conf` | Sus exclusiones para falsos positivos (paso 5). |
+| `waf/REQUEST-901-CRM-CUSTOM-RULES.conf` | Cuatro reglas propias del Equipo Azul para flujos de Secure CRM; ver [evidencia](../docs/hito-3/reglas-waf-propias.md). |
 | `kibana-export.ndjson` | Búsquedas DET-01 a DET-03, cuatro visualizaciones y dashboard exportados. |
 | Volumen `security-logs` | Eventos JSON de firma JWT inválida y acceso a ticket ajeno, enviados por Filebeat. |
 | `app-logs/` | Entrada adicional opcional para otros logs de la aplicación. |

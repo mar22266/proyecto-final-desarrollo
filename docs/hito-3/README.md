@@ -1,5 +1,7 @@
 # Hito 3 · Detección y respuesta del Equipo azul
 
+**Complemento posterior a H4:** se agregaron y probaron [cuatro reglas propias del WAF para Secure CRM](reglas-waf-propias.md), con IDs `10020` a `10023`. Su evidencia local y las búsquedas `WAF-*` están separadas de la repetición histórica de H3.
+
 > **Cronología:** las pruebas y respuestas `200` de esta página corresponden a la línea base anterior a Hito 4. El [registro del 17 de noviembre](demo-purple-team.md) añade las tres repeticiones con WAF en `On`: SQLi obtuvo `403` y evento `DET-01`; JWT e IDOR generaron `DET-02` y `DET-03`, respectivamente. Después, Hito 4 corrigió ambos fallos de la API. No se ha documentado una demo en vivo con participación simultánea de los dos equipos.
 
 ## Trazabilidad de los casos de negocio

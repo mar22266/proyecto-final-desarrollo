@@ -1,0 +1,45 @@
+{
+  "run_id": "JWT-IDOR-RT-20261118T004041Z",
+  "started_at_utc": "2026-11-18T00:40:41.5408370Z",
+  "api_image_created": "2026-11-18T00:38:58.483136065Z",
+  "requests": [
+    {
+      "name": "JWT adulterado",
+      "method": "GET",
+      "uri": "http://127.0.0.1:8080/api/users?probe=JWT-IDOR-RT-20261118T004041Z",
+      "status": 401,
+      "body": "{\"error\":\"Token inválido\"}"
+    },
+    {
+      "name": "IDOR ticket ajeno como viewer",
+      "method": "GET",
+      "uri": "http://127.0.0.1:8080/api/tickets/1?probe=JWT-IDOR-RT-20261118T004041Z",
+      "status": 403,
+      "body": "{\"error\":\"Acceso denegado\"}"
+    }
+  ],
+  "app_security_events": [
+    {
+      "timestamp_utc": "2026-11-18T00:40:41.602Z",
+      "event": "jwt_invalid_signature",
+      "method": "GET",
+      "path": "/api/users",
+      "ticket_id": null,
+      "claimed_role": null
+    },
+    {
+      "timestamp_utc": "2026-11-18T00:40:41.611Z",
+      "event": "ticket_foreign_access",
+      "method": "GET",
+      "path": "/api/tickets/1",
+      "ticket_id": 1,
+      "claimed_role": "viewer"
+    }
+  ],
+  "checks": {
+    "jwt_rejected_by_api_401": true,
+    "idor_rejected_by_api_403": true,
+    "jwt_event_seen": true,
+    "idor_event_seen": true
+  }
+}

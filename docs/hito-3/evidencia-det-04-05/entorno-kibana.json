@@ -1,0 +1,23 @@
+{
+  "verified_at_utc": "2026-11-18T00:24:22.9641389Z",
+  "waf_engine": "SecRuleEngine On",
+  "allowed_methods": "ALLOWED_METHODS=GET HEAD POST OPTIONS PUT DELETE",
+  "waf_bind": "127.0.0.1:8080",
+  "kibana_import": {
+    "success": true,
+    "success_count": 15,
+    "warnings": []
+  },
+  "saved_searches": [
+    {
+      "id": "det-04-xss-crs",
+      "title": "DET-04 XSS en WAF",
+      "kql": "fields.fuente : \"waf-audit\" and (modsec.transaction.messages.details.ruleId : \"10022\" or modsec.transaction.messages.details.ruleId : 941*)"
+    },
+    {
+      "id": "det-05-metodos-crs",
+      "title": "DET-05 Método no permitido",
+      "kql": "fields.fuente : \"waf-audit\" and modsec.transaction.messages.details.ruleId : \"911100\""
+    }
+  ]
+}

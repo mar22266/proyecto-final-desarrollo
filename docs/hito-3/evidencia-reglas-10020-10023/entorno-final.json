@@ -1,0 +1,16 @@
+{
+  "verified_at_utc": "2026-11-18T00:44:01.2457522Z",
+  "waf_engine": "SecRuleEngine On",
+  "waf_allowed_methods": "ALLOWED_METHODS=GET HEAD POST OPTIONS PUT DELETE",
+  "waf_bind": "127.0.0.1:8080",
+  "nginx_config_test": "2026/11/18 00:44:00 [warn] 1207#1207: \"ssl_stapling\" ignored, issuer certificate not found for certificate \"/etc/nginx/conf/server.crt\"\r\nnginx: [warn] \"ssl_stapling\" ignored, issuer certificate not found for certificate \"/etc/nginx/conf/server.crt\"\r\n2026/11/18 00:44:00 [notice] 1207#1207: ModSecurity-nginx v1.0.4 (rules loaded inline/local/remote: 0/861/0)\r\n2026/11/18 00:44:00 [notice] 1207#1207: libmodsecurity3 version 3.0.17\r\nnginx: the configuration file /etc/nginx/nginx.conf syntax is ok\r\nnginx: configuration file /etc/nginx/nginx.conf test is successful",
+  "api_image_created": "2026-11-18T00:38:58.483136065Z",
+  "waf_rules_file": "waf-siem/waf/REQUEST-901-CRM-CUSTOM-RULES.conf",
+  "waf_rule_ids": [
+    "10020",
+    "10021",
+    "10022",
+    "10023"
+  ],
+  "kibana_saved_objects_imported": 15
+}

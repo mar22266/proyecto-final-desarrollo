@@ -14,7 +14,7 @@ docker compose ps
 
 El registro de roles y la evidencia del arranque están en [`docs/hito-0`](../docs/hito-0/README.md). El diseño está en [`docs/hito-1`](../docs/hito-1/README.md). Los pasos genéricos que siguen describen también la opción A para otras aplicaciones; este grupo usa la opción B.
 
-La [evidencia y los límites de Hito 3](../docs/hito-3/README.md) describen las tres detecciones guardadas, el dashboard, las pruebas con bloqueo y la repetición pendiente del Equipo rojo. Para reproducir Hito 2 antes de esa repetición, cambien temporalmente `MODSEC_RULE_ENGINE=DetectionOnly` en el `.env` local y recreen `waf`; luego restablezcan `On`.
+La [evidencia y los límites de Hito 3](../docs/hito-3/README.md) describen las cinco detecciones guardadas, el dashboard y las pruebas con bloqueo. La [repetición de DET-04 y DET-05](../docs/hito-3/det-04-05-red-team.md) incluye respuestas HTTP y eventos correlacionados de Elasticsearch. Para reproducir las respuestas vulnerables de Hito 2, cambien temporalmente `MODSEC_RULE_ENGINE=DetectionOnly` en el `.env` local y recreen `waf`; luego restablezcan `On`.
 
 Su aplicación queda detrás de un WAF (ModSecurity + OWASP Core Rule Set). Filebeat envía los logs del WAF a Elasticsearch y ustedes los analizan en Kibana, que funciona como SIEM del Blue Team.
 
@@ -38,7 +38,7 @@ El entorno trae la infraestructura. **Ustedes construyen la defensa**: conectan 
 | `filebeat.yml` | Qué logs se envían al SIEM. |
 | `waf/REQUEST-900-…conf`, `waf/RESPONSE-999-…conf` | Sus exclusiones para falsos positivos (paso 5). |
 | `waf/REQUEST-901-CRM-CUSTOM-RULES.conf` | Cuatro reglas propias del Equipo Azul para flujos de Secure CRM; ver [evidencia](../docs/hito-3/reglas-waf-propias.md). |
-| `kibana-export.ndjson` | Búsquedas DET-01 a DET-03, cuatro visualizaciones y dashboard exportados. |
+| `kibana-export.ndjson` | Búsquedas DET-01 a DET-05 y WAF-01 a WAF-04, cuatro visualizaciones y dashboard exportados. |
 | Volumen `security-logs` | Eventos JSON de firma JWT inválida y acceso a ticket ajeno, enviados por Filebeat. |
 | `app-logs/` | Entrada adicional opcional para otros logs de la aplicación. |
 

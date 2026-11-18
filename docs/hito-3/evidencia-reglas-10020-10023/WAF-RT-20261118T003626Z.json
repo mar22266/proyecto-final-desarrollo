@@ -1,0 +1,135 @@
+{
+  "run_id": "WAF-RT-20261118T003626Z",
+  "executed_at_utc": "2026-11-18T00:36:41.0668219Z",
+  "waf": "http://127.0.0.1:8080",
+  "requests_and_responses": [
+    {
+      "name": "Control de salud",
+      "method": "GET",
+      "uri": "http://127.0.0.1:8080/api/health",
+      "status": 200,
+      "body": "{\"status\":\"ok\",\"service\":\"secure-crm-api\"}"
+    },
+    {
+      "name": "Control de login",
+      "method": "POST",
+      "uri": "http://127.0.0.1:8080/api/auth/login",
+      "status": 200,
+      "body": "[omitido: contiene token]"
+    },
+    {
+      "name": "Control de búsqueda",
+      "method": "GET",
+      "uri": "http://127.0.0.1:8080/api/tickets?q=soporte",
+      "status": 200,
+      "body": "[omitido: puede incluir datos de tickets]"
+    },
+    {
+      "name": "Control de lista de usuarios",
+      "method": "GET",
+      "uri": "http://127.0.0.1:8080/api/users",
+      "status": 200,
+      "body": "[omitido: la respuesta actual expone hashes]"
+    },
+    {
+      "name": "10020 SQLi login",
+      "method": "POST",
+      "uri": "http://127.0.0.1:8080/api/auth/login?probe=WAF-RT-20261118T003626Z",
+      "status": 403,
+      "body": "<html>\r\n<head><title>403 Forbidden</title></head>\r\n<body>\r\n<center><h1>403 Forbidden</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    },
+    {
+      "name": "10021 SQLi tickets",
+      "method": "GET",
+      "uri": "http://127.0.0.1:8080/api/tickets?q=factura%27%20OR%201%3D1%20--%20WAF-RT-20261118T003626Z",
+      "status": 403,
+      "body": "<html>\r\n<head><title>403 Forbidden</title></head>\r\n<body>\r\n<center><h1>403 Forbidden</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    },
+    {
+      "name": "10022 XSS tickets",
+      "method": "GET",
+      "uri": "http://127.0.0.1:8080/api/tickets?q=%3Cscript%3Ealert%28%27WAF-RT-20261118T003626Z%27%29%3C%2Fscript%3E",
+      "status": 403,
+      "body": "<html>\r\n<head><title>403 Forbidden</title></head>\r\n<body>\r\n<center><h1>403 Forbidden</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    },
+    {
+      "name": "10023 detalle de usuario",
+      "method": "GET",
+      "uri": "http://127.0.0.1:8080/api/users/1?probe=WAF-RT-20261118T003626Z",
+      "status": 403,
+      "body": "<html>\r\n<head><title>403 Forbidden</title></head>\r\n<body>\r\n<center><h1>403 Forbidden</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    }
+  ],
+  "elastic_audit": [
+    {
+      "elastic_id": "8YYV7KEB_cBudXd4kW7q",
+      "timestamp_utc": "2026-11-18T00:36:28.962Z",
+      "transaction_id": "179496218619.614722",
+      "method": "GET",
+      "uri": "/api/tickets?q=factura%27%20OR%201%3D1%20--%20WAF-RT-20261118T003626Z",
+      "status": 403,
+      "interrupted": true,
+      "rules": [
+        {
+          "id": "10021",
+          "message": "CRM SQLi en busqueda de tickets"
+        }
+      ]
+    },
+    {
+      "elastic_id": "8oYV7KEB_cBudXd4kW7q",
+      "timestamp_utc": "2026-11-18T00:36:28.962Z",
+      "transaction_id": "179496218692.266792",
+      "method": "GET",
+      "uri": "/api/tickets?q=%3Cscript%3Ealert%28%27WAF-RT-20261118T003626Z%27%29%3C%2Fscript%3E",
+      "status": 403,
+      "interrupted": true,
+      "rules": [
+        {
+          "id": "10022",
+          "message": "CRM XSS en busqueda de tickets"
+        }
+      ]
+    },
+    {
+      "elastic_id": "84YV7KEB_cBudXd4kW7q",
+      "timestamp_utc": "2026-11-18T00:36:28.962Z",
+      "transaction_id": "179496218628.831481",
+      "method": "GET",
+      "uri": "/api/users/1?probe=WAF-RT-20261118T003626Z",
+      "status": 403,
+      "interrupted": true,
+      "rules": [
+        {
+          "id": "10023",
+          "message": "CRM detalle de usuario sensible"
+        }
+      ]
+    },
+    {
+      "elastic_id": "8IYV7KEB_cBudXd4kW7q",
+      "timestamp_utc": "2026-11-18T00:36:28.959Z",
+      "transaction_id": "179496218672.163640",
+      "method": "POST",
+      "uri": "/api/auth/login?probe=WAF-RT-20261118T003626Z",
+      "status": 403,
+      "interrupted": true,
+      "rules": [
+        {
+          "id": "10020",
+          "message": "CRM SQLi en login"
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "health_200": true,
+    "valid_login_200": true,
+    "normal_search_200": true,
+    "users_list_200": true,
+    "rule_10020_403_and_audit": true,
+    "rule_10021_403_and_audit": true,
+    "rule_10022_403_and_audit": true,
+    "rule_10023_403_and_audit": true
+  }
+}

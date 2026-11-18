@@ -2,6 +2,12 @@
 
 **Complemento posterior a H4:** se agregaron y probaron [cuatro reglas propias del WAF para Secure CRM](reglas-waf-propias.md), con IDs `10020` a `10023`. Su evidencia local y las búsquedas `WAF-*` están separadas de la repetición histórica de H3.
 
+La [validación final de `10020`–`10023`](validacion-waf-10020-10023.md) incluye una repetición con la API reconstruida, una captura de las cuatro respuestas 403 y una comprobación separada de JWT e IDOR.
+
+**Repetición Red Team adicional:** [DET-04 XSS y DET-05 métodos HTTP no permitidos](det-04-05-red-team.md) se probaron el 17 de noviembre de 2026 (Guatemala) con respuestas 403, eventos de Elasticsearch correlacionados y controles legítimos 200. La evidencia JSON no contiene tokens.
+
+Capturas: [DET-04 en Kibana](capturas/kibana-det-04.jpg) · [DET-05 en Kibana](capturas/kibana-det-05.jpg).
+
 > **Cronología:** las pruebas y respuestas `200` de esta página corresponden a la línea base anterior a Hito 4. El [registro del 17 de noviembre](demo-purple-team.md) añade las tres repeticiones con WAF en `On`: SQLi obtuvo `403` y evento `DET-01`; JWT e IDOR generaron `DET-02` y `DET-03`, respectivamente. Después, Hito 4 corrigió ambos fallos de la API. No se ha documentado una demo en vivo con participación simultánea de los dos equipos.
 
 ## Trazabilidad de los casos de negocio
@@ -46,7 +52,7 @@ La instalación local de Kibana tiene la seguridad de Elastic deshabilitada. Las
 | `DET-01 SQLi en login` | `fields.fuente : "waf-audit" and modsec.transaction.messages.details.ruleId : "942100"` | Regla CRS `942100` sobre `POST /api/auth/login`; también se activó el umbral `949110`. |
 | `DET-02 JWT con firma inválida` | `fields.fuente : "app-security" and security.event : "jwt_invalid_signature"` | `GET /api/users` con un JWT cuyo payload fue alterado conservando la firma anterior. |
 | `DET-03 Acceso a ticket ajeno` | `fields.fuente : "app-security" and security.event : "ticket_foreign_access"` | El usuario `viewer` consultó `GET /api/tickets/1`, que no le pertenece. |
-| `DET-04 XSS por CRS` | `fields.fuente : "waf-audit" and modsec.transaction.messages.details.ruleId : 941*` | Regla `941100` observada en la prueba local de XSS en la búsqueda de tickets. |
+| `DET-04 XSS en WAF` | `fields.fuente : "waf-audit" and (modsec.transaction.messages.details.ruleId : "10022" or modsec.transaction.messages.details.ruleId : 941*)` | La regla propia `10022` bloqueó `<script>`; CRS `941*` bloqueó `href=javascript:`. Ambas pruebas recibieron 403. |
 | `DET-05 Método no permitido` | `fields.fuente : "waf-audit" and modsec.transaction.messages.details.ruleId : "911100"` | `PATCH /api/health` recibió `403` y generó un evento `911100` el 2026-11-10 cerca de `18:43:35Z`. |
 
 `DET-01` usa el log de auditoría de ModSecurity. Las otras dos señales se generan en la API y pasan por el volumen `security-logs` y la entrada `app-security` de Filebeat. El registro JSON contiene hora, tipo, método y ruta; para el ticket incluye ID y rol. No contiene el JWT, contraseñas ni el cuerpo de la respuesta. La observación de firma se limita al error `invalid signature`; no cambia la autenticación todavía vulnerable de H2. La observación de ticket registra lecturas de usuarios no administradores ajenas a su asignación y autoría; tampoco cambia la respuesta. Las correcciones pertenecen a H4.
@@ -55,13 +61,13 @@ La instalación local de Kibana tiene la seguridad de Elastic deshabilitada. Las
 
 El dashboard **`H3 · Detección Blue Team`** contiene:
 
-1. Las tres búsquedas `DET-*`, para relacionar el evento con su ruta y hora.
+1. Las búsquedas `DET-01` a `DET-03`, para relacionar los tres PoC originales con su ruta y hora. `DET-04` y `DET-05` están disponibles en Discover.
 2. Una serie temporal que cuenta eventos de `waf-audit` y `app-security`.
 3. El top de IDs de reglas CRS activadas.
 4. El top de rutas del log de auditoría.
 5. El top de IP de origen vistas por ModSecurity.
 
-El archivo NDJSON incluye **11 objetos**: un data view `filebeat-*`, cinco búsquedas, cuatro visualizaciones Lens y un dashboard con sus referencias. Se generó mediante la exportación de objetos guardados de Kibana y se verificó que cada línea es JSON válido. Para restaurarlo en otra instalación: Stack Management → Saved Objects → Import → seleccionar `waf-siem/kibana-export.ndjson`, aceptando reemplazo solo si se pretende actualizar estos mismos objetos. Después, abrir el dashboard y elegir un rango que incluya la nueva prueba.
+El archivo NDJSON incluye **15 objetos**: un data view `filebeat-*`, cinco búsquedas `DET-*`, cuatro búsquedas `WAF-*`, cuatro visualizaciones Lens y un dashboard con sus referencias. Se importó en la instancia local con 15 resultados correctos y sin errores. Para restaurarlo en otra instalación: Stack Management → Saved Objects → Import → seleccionar `waf-siem/kibana-export.ndjson`, aceptando reemplazo solo si se pretende actualizar estos mismos objetos. Después, abrir el dashboard y elegir un rango que incluya la nueva prueba.
 
 La IP de origen observada al atacar desde esta misma laptop suele ser la de la red de Docker; el panel no distingue a dos integrantes que usen el mismo host. No se debe interpretar esa IP como identidad del atacante.
 

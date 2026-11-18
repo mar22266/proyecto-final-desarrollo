@@ -1,0 +1,120 @@
+{
+  "run_id": "RT-20261118T002052Z",
+  "executed_at_utc": "2026-11-18T00:21:06.5818284Z",
+  "waf": "http://127.0.0.1:8080",
+  "payloads": {
+    "xss_custom": "<script>alert('RT-20261118T002052Z')</script>",
+    "xss_crs": "<a href=javascript:alert('RT-20261118T002052Z')>x</a>"
+  },
+  "requests_and_responses": [
+    {
+      "name": "Control: GET health",
+      "method": "GET",
+      "uri": "http://127.0.0.1:8080/api/health",
+      "status": 200,
+      "body": "{\"status\":\"ok\",\"service\":\"secure-crm-api\"}"
+    },
+    {
+      "name": "Control: búsqueda normal",
+      "method": "GET",
+      "uri": "http://127.0.0.1:8080/api/tickets?q=soporte",
+      "status": 200,
+      "body": "{\"query\":\"soporte\",\"tickets\":[]}"
+    },
+    {
+      "name": "DET-04: XSS bloqueado por 10022",
+      "method": "GET",
+      "uri": "http://127.0.0.1:8080/api/tickets?q=%3Cscript%3Ealert%28%27RT-20261118T002052Z%27%29%3C%2Fscript%3E",
+      "status": 403,
+      "body": "<html>\r\n<head><title>403 Forbidden</title></head>\r\n<body>\r\n<center><h1>403 Forbidden</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    },
+    {
+      "name": "DET-04: XSS bloqueado por CRS 941*",
+      "method": "GET",
+      "uri": "http://127.0.0.1:8080/api/tickets?q=%3Ca%20href%3Djavascript%3Aalert%28%27RT-20261118T002052Z%27%29%3Ex%3C%2Fa%3E",
+      "status": 403,
+      "body": "<html>\r\n<head><title>403 Forbidden</title></head>\r\n<body>\r\n<center><h1>403 Forbidden</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    },
+    {
+      "name": "DET-05: método PATCH no permitido",
+      "method": "PATCH",
+      "uri": "http://127.0.0.1:8080/api/health?probe=DET05-RT-20261118T002052Z",
+      "status": 403,
+      "body": "<html>\r\n<head><title>403 Forbidden</title></head>\r\n<body>\r\n<center><h1>403 Forbidden</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    }
+  ],
+  "elastic_audit": [
+    {
+      "elastic_id": "54YH7KEB_cBudXd4SW7E",
+      "timestamp_utc": "2026-11-18T00:20:57.021Z",
+      "transaction_id": "179496125260.424497",
+      "method": "PATCH",
+      "uri": "/api/health?probe=DET05-RT-20261118T002052Z",
+      "status": 403,
+      "interrupted": true,
+      "rules": [
+        {
+          "id": "911100",
+          "message": "Method is not allowed by policy"
+        },
+        {
+          "id": "949110",
+          "message": "Inbound Anomaly Score Exceeded (Total Score: 5)"
+        }
+      ]
+    },
+    {
+      "elastic_id": "5YYH7KEB_cBudXd4SW7E",
+      "timestamp_utc": "2026-11-18T00:20:57.02Z",
+      "transaction_id": "179496125239.180682",
+      "method": "GET",
+      "uri": "/api/tickets?q=%3Cscript%3Ealert%28%27RT-20261118T002052Z%27%29%3C%2Fscript%3E",
+      "status": 403,
+      "interrupted": true,
+      "rules": [
+        {
+          "id": "10022",
+          "message": "CRM XSS en busqueda de tickets"
+        }
+      ]
+    },
+    {
+      "elastic_id": "5oYH7KEB_cBudXd4SW7E",
+      "timestamp_utc": "2026-11-18T00:20:57.02Z",
+      "transaction_id": "17949612521.714016",
+      "method": "GET",
+      "uri": "/api/tickets?q=%3Ca%20href%3Djavascript%3Aalert%28%27RT-20261118T002052Z%27%29%3Ex%3C%2Fa%3E",
+      "status": 403,
+      "interrupted": true,
+      "rules": [
+        {
+          "id": "941100",
+          "message": "XSS Attack Detected via libinjection"
+        },
+        {
+          "id": "941170",
+          "message": "NoScript XSS InjectionChecker: Attribute Injection"
+        },
+        {
+          "id": "941210",
+          "message": "Javascript Word Detected"
+        },
+        {
+          "id": "941390",
+          "message": "Javascript method detected"
+        },
+        {
+          "id": "949110",
+          "message": "Inbound Anomaly Score Exceeded (Total Score: 20)"
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "control_health_200": true,
+    "control_search_200": true,
+    "xss_custom_403_rule_10022": true,
+    "xss_crs_403_rule_941": true,
+    "method_403_rule_911100": true
+  }
+}

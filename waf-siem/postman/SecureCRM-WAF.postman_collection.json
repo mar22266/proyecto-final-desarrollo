@@ -70,7 +70,7 @@
     },
     {
       "name": "2. Ataques (pega tu PoC del lab DAST)",
-      "description": "El WAF esta en DetectionOnly: estas peticiones NO se bloquean, solo se registran. Reemplaza el valor {{poc_...}} por el PoC que documentaste en el Proyecto DAST. Despues de enviarlas, revisa el SIEM.",
+      "description": "Con el WAF en On, las peticiones detectadas se bloquean con 403 y se registran. Reemplaza los valores {{poc_...}} por tus PoC y revisa el SIEM. Para DET-05 usa PATCH /api/health, sin modificar datos.",
       "item": [
         {
           "name": "SQLi en el login",
@@ -95,17 +95,44 @@
           }
         },
         {
-          "name": "Metodo no permitido (DELETE) — prueba del modo On",
+          "name": "DET-04 XSS script — regla propia 10022",
           "request": {
-            "method": "DELETE",
+            "method": "GET",
             "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
-            "url": "{{base_url}}/api/tickets/1"
+            "url": "{{base_url}}/api/tickets?q=%3Cscript%3Ealert%28%27DET04-postman%27%29%3C%2Fscript%3E"
           },
           "event": [
             { "listen": "test", "script": { "exec": [
-              "// En DetectionOnly: pasa. En modo On: el WAF responde 403 (regla 911100),",
-              "// porque DELETE no esta en ALLOWED_METHODS. Asi se ve el falso positivo",
-              "// de metodos en el Hito 3."
+              "pm.test('DET-04: XSS bloqueado', () => pm.response.to.have.status(403));",
+              "// En Kibana: DET-04 XSS en WAF y WAF-03 XSS tickets (10022)."
+            ] } }
+          ]
+        },
+        {
+          "name": "DET-04 XSS javascript — CRS 941",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+            "url": "{{base_url}}/api/tickets?q=%3Ca%20href%3Djavascript%3Aalert%28%27DET04-CRS-postman%27%29%3Ex%3C%2Fa%3E"
+          },
+          "event": [
+            { "listen": "test", "script": { "exec": [
+              "pm.test('DET-04: XSS CRS bloqueado', () => pm.response.to.have.status(403));",
+              "// En Kibana: DET-04 XSS en WAF, ruleId 941*."
+            ] } }
+          ]
+        },
+        {
+          "name": "DET-05 Metodo no permitido (PATCH) — prueba del modo On",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/api/health?probe=DET05-postman"
+          },
+          "event": [
+            { "listen": "test", "script": { "exec": [
+              "pm.test('DET-05: PATCH bloqueado por el WAF', () => pm.response.to.have.status(403));",
+              "// PATCH no esta en ALLOWED_METHODS; GET /api/health debe responder 200.",
+              "// La ruta de salud evita modificar tickets si el WAF esta en DetectionOnly."
             ] } }
           ]
         }
